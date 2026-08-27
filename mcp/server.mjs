@@ -12,94 +12,53 @@ import { generateKeyBetween } from "fractional-indexing";
 import { z } from "zod";
 
 import {
-  COWART_STATIC_BUILD_DIR,
-  cowartStaticHtml,
-} from "./lib/cowart-static-widget.mjs";
+  ANY_COWART_STATIC_BUILD_DIR,
+  anyCowartStaticHtml,
+} from "./lib/any-cowart-static-widget.mjs";
 import {
   nonEmptyString,
   pageAssetUrl,
   pageDirName,
   pathResolve,
-  readCowartCanvasState,
-  readCowartPageAsset,
-  readCowartSelectionState,
-  readCowartViewState,
+  readAnyCowartCanvasState,
+  readAnyCowartPageAsset,
+  readAnyCowartSelectionState,
+  readAnyCowartViewState,
   resolveCanvasDir,
-  resolveCowartPaths,
-  saveCowartCanvasSnapshot,
-  writeCowartPageAsset,
-  writeCowartSelectionState,
-  writeCowartViewState,
+  resolveAnyCowartPaths,
+  saveAnyCowartCanvasSnapshot,
+  writeAnyCowartPageAsset,
+  writeAnyCowartSelectionState,
+  writeAnyCowartViewState,
 } from "./lib/canvas-storage.mjs";
 import { pluginPath } from "./lib/plugin-root.mjs";
 import { inlineWidget, registerWidgetResource } from "./lib/widget-resource.mjs";
-import {
-  COWART_GA4_EVENT_NAMES,
-  sendCowartGa4Event,
-} from "./lib/ga4-analytics.mjs";
-
-const TOOL_RENDER_WIDGET = "render_cowart_canvas_widget";
-const TOOL_GET_CANVAS_STATE = "get_cowart_canvas_state";
-const TOOL_SAVE_CANVAS_STATE = "save_cowart_canvas_state";
-const TOOL_SAVE_SELECTION_STATE = "save_cowart_selection_state";
-const TOOL_SAVE_VIEW_STATE = "save_cowart_view_state";
-const TOOL_GET_SELECTION = "get_cowart_selection";
-const TOOL_INSERT_IMAGE = "insert_cowart_image";
-const TOOL_INSERT_HTML_DRAFT = "insert_cowart_html_draft";
-const TOOL_SAVE_REFERENCE_IMAGE = "save_cowart_reference_image";
-const TOOL_READ_PAGE_ASSET = "read_cowart_page_asset";
-const TOOL_DOWNLOAD_FILE = "download_cowart_file";
-const TOOL_COPY_IMAGE_TO_CLIPBOARD = "copy_cowart_image_to_clipboard";
-const TOOL_TRACK_ANALYTICS = "track_cowart_analytics_event";
-
+const TOOL_RENDER_WIDGET = "render_any_cowart_canvas_widget";
+const TOOL_GET_CANVAS_STATE = "get_any_cowart_canvas_state";
+const TOOL_SAVE_CANVAS_STATE = "save_any_cowart_canvas_state";
+const TOOL_SAVE_SELECTION_STATE = "save_any_cowart_selection_state";
+const TOOL_SAVE_VIEW_STATE = "save_any_cowart_view_state";
+const TOOL_GET_SELECTION = "get_any_cowart_selection";
+const TOOL_INSERT_IMAGE = "insert_any_cowart_image";
+const TOOL_INSERT_HTML_DRAFT = "insert_any_cowart_html_draft";
+const TOOL_SAVE_REFERENCE_IMAGE = "save_any_cowart_reference_image";
+const TOOL_READ_PAGE_ASSET = "read_any_cowart_page_asset";
+const TOOL_DOWNLOAD_FILE = "download_any_cowart_file";
+const TOOL_COPY_IMAGE_TO_CLIPBOARD = "copy_any_cowart_image_to_clipboard";
 const execFileAsync = promisify(execFile);
 
 const PAGE_ID_PREFIX = "page:";
-const COWART_WIDGET_URI = "ui://widget/cowart/canvas.html";
-const COWART_HTML_DRAFT_URL_ORIGIN = "http://cowart.local";
+const ANY_COWART_WIDGET_URI = "ui://widget/any-cowart/canvas.html";
+const ANY_COWART_HTML_DRAFT_URL_ORIGIN = "http://any-cowart.local";
 const DEFAULT_DISPLAY_MODE = "fullscreen";
-const COWART_GOOGLE_DOMAINS = [
-  "https://www.google-analytics.com",
-  "https://region1.google-analytics.com",
-  "https://analytics.google.com",
-  "https://www.googletagmanager.com",
-  "https://stats.g.doubleclick.net",
-  "https://www.doubleclick.net",
-  "https://pagead2.googlesyndication.com",
-  "https://www.googleadservices.com",
-  "https://www.google.com",
-  "https://www.google.cn",
-  "https://www.gstatic.com",
-  "https://www.googleapis.com",
-  "https://*.google-analytics.com",
-  "https://*.analytics.google.com",
-  "https://*.googletagmanager.com",
-  "https://*.doubleclick.net",
-  "https://*.googlesyndication.com",
-  "https://*.googleadservices.com",
-  "https://*.google.com",
-  "https://*.google.cn",
-  "https://*.gstatic.com",
-  "https://*.googleapis.com",
-  "https://*.merchant-center-analytics.goog",
-];
-const COWART_CONNECT_DOMAINS = [...COWART_GOOGLE_DOMAINS];
-const COWART_RESOURCE_DOMAINS = [
+const ANY_COWART_CONNECT_DOMAINS = [];
+const ANY_COWART_RESOURCE_DOMAINS = [
   "data:",
   "blob:",
-  ...COWART_GOOGLE_DOMAINS,
 ];
-const COWART_FRAME_DOMAINS = [
+const ANY_COWART_FRAME_DOMAINS = [
   "data:",
   "blob:",
-  "https://www.googletagmanager.com",
-  "https://www.doubleclick.net",
-  "https://www.google.com",
-  "https://www.google.cn",
-  "https://*.googletagmanager.com",
-  "https://*.doubleclick.net",
-  "https://*.google.com",
-  "https://*.google.cn",
 ];
 
 const projectArgsSchema = {
@@ -120,14 +79,13 @@ const server = new McpServer(
   },
   {
     instructions:
-      "cowart_mcp is Cowart's core canvas MCP server. Use render_cowart_canvas_widget when the user asks to open, reopen, or explicitly refresh the native canvas. When a Cowart widget is already open, reuse it and use get_cowart_selection for persisted widget selection, save_cowart_reference_image for widget-provided reference images, read_cowart_page_asset for lazy widget asset loading, download_cowart_file to save widget-requested files into the user's Downloads folder, insert_cowart_image to place or replace bitmap assets, and insert_cowart_html_draft to save and embed HTML drafts without rendering another widget tab.",
+      "any_cowart_mcp is any-cowart's core canvas MCP server. Use render_any_cowart_canvas_widget when the user asks to open, reopen, or explicitly refresh the native canvas. When an any-cowart widget is already open, reuse it and use get_any_cowart_selection for persisted widget selection, save_any_cowart_reference_image for widget-provided reference images, read_any_cowart_page_asset for lazy widget asset loading, download_any_cowart_file to save widget-requested files into the user's Downloads folder, insert_any_cowart_image to place or replace bitmap assets, and insert_any_cowart_html_draft to save and embed HTML drafts without rendering another widget tab.",
   },
 );
 
-registerCowartWidget(server);
-registerCowartStateTools(server);
-registerCowartImageTools(server);
-registerCowartAnalyticsTools(server);
+registerAnyCowartWidget(server);
+registerAnyCowartStateTools(server);
+registerAnyCowartImageTools(server);
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
@@ -151,7 +109,7 @@ function sanitizeFileName(name, fallbackName = "image.png") {
   return `${baseName || "image"}${extension}`;
 }
 
-function sanitizeDirectoryName(name, fallbackName = "Cowart Export") {
+function sanitizeDirectoryName(name, fallbackName = "any-cowart Export") {
   return basename(String(name || fallbackName))
     .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "-")
     .replace(/[. ]+$/g, "")
@@ -351,29 +309,29 @@ function firstSelectedShapeId(selection) {
 }
 
 function isAiImageHolderShape(shape) {
-  return shape?.typeName === "shape" && shape.meta?.cowartAiImageHolder === true;
+  return shape?.typeName === "shape" && shape.meta?.anyCowartAiImageHolder === true;
 }
 
 function isAiDraftHolderShape(shape) {
-  return shape?.typeName === "shape" && shape.meta?.cowartAiDraftHolder === true;
+  return shape?.typeName === "shape" && shape.meta?.anyCowartAiDraftHolder === true;
 }
 
 function isAiSlidesShape(shape) {
-  return shape?.typeName === "shape" && shape.meta?.cowartAiSlides === true;
+  return shape?.typeName === "shape" && shape.meta?.anyCowartAiSlides === true;
 }
 
-function isCowartHtmlDraftShape(shape) {
+function isAnyCowartHtmlDraftShape(shape) {
   return shape?.typeName === "shape" && shape.type === "embed" && (
-    shape.meta?.cowartHtmlDraft === true ||
+    shape.meta?.anyCowartHtmlDraft === true ||
     /^data:text\/html(?:;[^,]*)?,/i.test(String(shape.props?.url || ""))
   );
 }
 
-function cowartHtmlDraftVirtualUrl(assetUrl) {
-  return `${COWART_HTML_DRAFT_URL_ORIGIN}${assetUrl}`;
+function anyCowartHtmlDraftVirtualUrl(assetUrl) {
+  return `${ANY_COWART_HTML_DRAFT_URL_ORIGIN}${assetUrl}`;
 }
 
-function cowartHtmlDraftDataUrl(htmlContent) {
+function anyCowartHtmlDraftDataUrl(htmlContent) {
   return `data:text/html;base64,${Buffer.from(String(htmlContent || ""), "utf8").toString("base64")}`;
 }
 
@@ -459,7 +417,7 @@ async function getImageDimensions(filePath) {
   throw new Error(`Could not read image dimensions for ${filePath}. Pass displayWidth/displayHeight and use a PNG/JPEG/WebP source.`);
 }
 
-async function insertCowartImage(args = {}) {
+async function insertAnyCowartImage(args = {}) {
   const imagePath = nonEmptyString(args.imagePath);
   if (!imagePath) throw new Error("imagePath is required.");
 
@@ -467,15 +425,15 @@ async function insertCowartImage(args = {}) {
   const sourceStat = await stat(sourceImagePath);
   if (!sourceStat.isFile()) throw new Error(`imagePath is not a file: ${sourceImagePath}`);
 
-  const canvasState = await readCowartCanvasState(args, { hydrateAssets: false });
+  const canvasState = await readAnyCowartCanvasState(args, { hydrateAssets: false });
   const snapshot = canvasState.snapshot;
   if (!snapshot || typeof snapshot !== "object" || !snapshot.schema || !snapshot.store) {
-    throw new Error("No Cowart canvas snapshot exists yet. Open the Cowart widget for the target project and create or save the canvas before inserting images.");
+    throw new Error("No any-cowart canvas snapshot exists yet. Open the any-cowart widget for the target project and create or save the canvas before inserting images.");
   }
 
   const store = snapshot.store;
-  const { selection } = await readCowartSelectionState(args);
-  const { viewState } = await readCowartViewState(args);
+  const { selection } = await readAnyCowartSelectionState(args);
+  const { viewState } = await readAnyCowartViewState(args);
 
   const anchorShapeId = nonEmptyString(args.anchorShapeId) || nonEmptyString(args.sourceShapeId) || firstSelectedShapeId(selection);
   const anchorShape = anchorShapeId ? getRecord(store, anchorShapeId, "anchor shape") : null;
@@ -559,17 +517,17 @@ async function insertCowartImage(args = {}) {
   };
 
   const shapeMeta = args.shapeMeta && typeof args.shapeMeta === "object" ? { ...args.shapeMeta } : {};
-  if (anchorShapeId && !shapeMeta.cowartAnnotationSourceShapeId) {
-    shapeMeta.cowartAnnotationSourceShapeId = anchorShapeId;
+  if (anchorShapeId && !shapeMeta.anyCowartAnnotationSourceShapeId) {
+    shapeMeta.anyCowartAnnotationSourceShapeId = anchorShapeId;
   }
-  if (shouldTargetAiImageHolder && anchorShapeId && !shapeMeta.cowartGeneratedForAiImageHolder) {
-    shapeMeta.cowartGeneratedForAiImageHolder = anchorShapeId;
+  if (shouldTargetAiImageHolder && anchorShapeId && !shapeMeta.anyCowartGeneratedForAiImageHolder) {
+    shapeMeta.anyCowartGeneratedForAiImageHolder = anchorShapeId;
   }
   if (shouldReplaceAiImageHolder && anchorShapeId) {
-    shapeMeta.cowartReplacedAiImageHolder = true;
+    shapeMeta.anyCowartReplacedAiImageHolder = true;
   }
-  if (nonEmptyString(args.annotationScreenshot) && !shapeMeta.cowartAnnotationScreenshot) {
-    shapeMeta.cowartAnnotationScreenshot = nonEmptyString(args.annotationScreenshot);
+  if (nonEmptyString(args.annotationScreenshot) && !shapeMeta.anyCowartAnnotationScreenshot) {
+    shapeMeta.anyCowartAnnotationScreenshot = nonEmptyString(args.annotationScreenshot);
   }
 
   const shapeRecord = {
@@ -590,7 +548,7 @@ async function insertCowartImage(args = {}) {
       crop: null,
       flipX: false,
       flipY: false,
-      altText: nonEmptyString(args.altText) || "Cowart inserted image",
+      altText: nonEmptyString(args.altText) || "any-cowart inserted image",
     },
     parentId,
     index,
@@ -614,12 +572,12 @@ async function insertCowartImage(args = {}) {
           ])),
         }
       : args;
-    await saveCowartCanvasSnapshot(saveArgs, snapshot);
+    await saveAnyCowartCanvasSnapshot(saveArgs, snapshot);
   }
 
   return {
     canvasDir,
-    cowartUrl: nonEmptyString(args.cowartUrl),
+    anyCowartUrl: nonEmptyString(args.anyCowartUrl),
     pageId,
     parentId,
     anchorShapeId,
@@ -637,7 +595,7 @@ async function insertCowartImage(args = {}) {
   };
 }
 
-async function insertCowartHtmlDraft(args = {}) {
+async function insertAnyCowartHtmlDraft(args = {}) {
   const htmlContent = nonEmptyString(args.htmlContent);
   const htmlPath = nonEmptyString(args.htmlPath);
   if (!htmlContent && !htmlPath) {
@@ -654,15 +612,15 @@ async function insertCowartHtmlDraft(args = {}) {
     if (!sourceStat.isFile()) throw new Error(`htmlPath is not a file: ${sourceHtmlPath}`);
   }
 
-  const canvasState = await readCowartCanvasState(args, { hydrateAssets: false });
+  const canvasState = await readAnyCowartCanvasState(args, { hydrateAssets: false });
   const snapshot = canvasState.snapshot;
   if (!snapshot || typeof snapshot !== "object" || !snapshot.schema || !snapshot.store) {
-    throw new Error("No Cowart canvas snapshot exists yet. Open the Cowart widget for the target project and create or save the canvas before inserting HTML drafts.");
+    throw new Error("No any-cowart canvas snapshot exists yet. Open the any-cowart widget for the target project and create or save the canvas before inserting HTML drafts.");
   }
 
   const store = snapshot.store;
-  const { selection } = await readCowartSelectionState(args);
-  const { viewState } = await readCowartViewState(args);
+  const { selection } = await readAnyCowartSelectionState(args);
+  const { viewState } = await readAnyCowartViewState(args);
 
   const draftShapeId = nonEmptyString(args.draftShapeId) || nonEmptyString(args.anchorShapeId) || firstSelectedShapeId(selection);
   const draftShape = draftShapeId ? getRecord(store, draftShapeId, "AI draft holder shape") : null;
@@ -674,7 +632,7 @@ async function insertCowartHtmlDraft(args = {}) {
   if (!pageId || !store[pageId]) throw new Error("Could not determine target pageId.");
 
   const anchorBounds = draftShape ? pageBoundsForShape(store, draftShape) : null;
-  const shouldUpdateExistingDraft = args.updateExistingDraft !== false && isCowartHtmlDraftShape(draftShape) && anchorBounds;
+  const shouldUpdateExistingDraft = args.updateExistingDraft !== false && isAnyCowartHtmlDraftShape(draftShape) && anchorBounds;
   const shouldTargetDraftHolder = args.matchAnchor !== false && isAiDraftHolderShape(draftShape) && anchorBounds;
   const shouldTargetAiSlides = isAiSlidesShape(draftShape);
   const shouldReplaceDraftHolder = shouldTargetDraftHolder && args.replaceDraftHolder !== false;
@@ -692,8 +650,8 @@ async function insertCowartHtmlDraft(args = {}) {
   let bounds = null;
 
   if (shouldTargetAiSlides) {
-    const padding = Math.max(0, finiteNumber(draftShape.meta?.cowartAiSlidesPadding, 12));
-    const gap = Math.max(0, finiteNumber(draftShape.meta?.cowartAiSlidesGap, 32));
+    const padding = Math.max(0, finiteNumber(draftShape.meta?.anyCowartAiSlidesPadding, 12));
+    const gap = Math.max(0, finiteNumber(draftShape.meta?.anyCowartAiSlidesGap, 32));
     const slideItems = Object.values(store)
       .filter((record) => record?.typeName === "shape" && record.parentId === draftShape.id)
       .sort((a, b) => String(a.index || "").localeCompare(String(b.index || "")));
@@ -724,7 +682,7 @@ async function insertCowartHtmlDraft(args = {}) {
     throw new Error(`Unsafe page assets directory: ${assetsDir}`);
   }
   const existingAssetUrl = shouldUpdateExistingDraft
-    ? nonEmptyString(draftShape.meta?.cowartHtmlDraftAssetUrl)
+    ? nonEmptyString(draftShape.meta?.anyCowartHtmlDraftAssetUrl)
     : null;
   const expectedAssetPrefix = `/page-assets/${pageDirName(pageId)}/`;
   let existingFileName = null;
@@ -741,8 +699,8 @@ async function insertCowartHtmlDraft(args = {}) {
       Object.values(store).some(
         (record) =>
           record?.id !== draftShape.id &&
-          isCowartHtmlDraftShape(record) &&
-          nonEmptyString(record.meta?.cowartHtmlDraftAssetUrl) === existingAssetUrl,
+          isAnyCowartHtmlDraftShape(record) &&
+          nonEmptyString(record.meta?.anyCowartHtmlDraftAssetUrl) === existingAssetUrl,
       ),
   );
   const requestedName = sanitizeHtmlFileName(
@@ -768,14 +726,14 @@ async function insertCowartHtmlDraft(args = {}) {
     : chooseIndex(store, parentId);
   const assetUrl = pageAssetUrl(pageId, fileName);
   const shapeMeta = args.shapeMeta && typeof args.shapeMeta === "object" ? { ...args.shapeMeta } : {};
-  if (shouldTargetDraftHolder && draftShapeId && !shapeMeta.cowartGeneratedForAiDraftHolder) {
-    shapeMeta.cowartGeneratedForAiDraftHolder = draftShapeId;
+  if (shouldTargetDraftHolder && draftShapeId && !shapeMeta.anyCowartGeneratedForAiDraftHolder) {
+    shapeMeta.anyCowartGeneratedForAiDraftHolder = draftShapeId;
   }
   if (shouldReplaceDraftHolder && draftShapeId) {
-    shapeMeta.cowartReplacedAiDraftHolder = true;
+    shapeMeta.anyCowartReplacedAiDraftHolder = true;
   }
-  if (shouldTargetAiSlides && draftShapeId && !shapeMeta.cowartAiSlidesParentShapeId) {
-    shapeMeta.cowartAiSlidesParentShapeId = draftShapeId;
+  if (shouldTargetAiSlides && draftShapeId && !shapeMeta.anyCowartAiSlidesParentShapeId) {
+    shapeMeta.anyCowartAiSlidesParentShapeId = draftShapeId;
   }
 
   const shapeRecord = {
@@ -786,8 +744,8 @@ async function insertCowartHtmlDraft(args = {}) {
     opacity: 1,
     meta: {
       ...(shouldUpdateExistingDraft && draftShape.meta && typeof draftShape.meta === "object" ? draftShape.meta : {}),
-      cowartHtmlDraft: true,
-      cowartHtmlDraftAssetUrl: assetUrl,
+      anyCowartHtmlDraft: true,
+      anyCowartHtmlDraftAssetUrl: assetUrl,
       ...shapeMeta,
     },
     id: shapeId,
@@ -796,7 +754,7 @@ async function insertCowartHtmlDraft(args = {}) {
       ...(shouldUpdateExistingDraft && draftShape.props && typeof draftShape.props === "object" ? draftShape.props : {}),
       w: width,
       h: height,
-      url: cowartHtmlDraftDataUrl(finalHtml),
+      url: anyCowartHtmlDraftDataUrl(finalHtml),
     },
     parentId,
     index,
@@ -810,7 +768,7 @@ async function insertCowartHtmlDraft(args = {}) {
       delete store[replacedShapeId];
     }
     store[shapeId] = shapeRecord;
-    await saveCowartCanvasSnapshot(args, snapshot);
+    await saveAnyCowartCanvasSnapshot(args, snapshot);
   }
 
   return {
@@ -822,7 +780,7 @@ async function insertCowartHtmlDraft(args = {}) {
     index,
     assetFile: filePath,
     assetUrl,
-    virtualUrl: cowartHtmlDraftVirtualUrl(assetUrl),
+    virtualUrl: anyCowartHtmlDraftVirtualUrl(assetUrl),
     displayUrlKind: "data:text/html;base64",
     bounds,
     updatedExistingHtmlDraft: Boolean(shouldUpdateExistingDraft),
@@ -833,16 +791,16 @@ async function insertCowartHtmlDraft(args = {}) {
   };
 }
 
-async function saveCowartReferenceImage(args = {}) {
-  const canvasState = await readCowartCanvasState(args, { hydrateAssets: false });
+async function saveAnyCowartReferenceImage(args = {}) {
+  const canvasState = await readAnyCowartCanvasState(args, { hydrateAssets: false });
   const snapshot = canvasState.snapshot;
   if (!snapshot || typeof snapshot !== "object" || !snapshot.schema || !snapshot.store) {
-    throw new Error("No Cowart canvas snapshot exists yet. Open the Cowart widget for the target project and create or save the canvas before saving reference images.");
+    throw new Error("No any-cowart canvas snapshot exists yet. Open the any-cowart widget for the target project and create or save the canvas before saving reference images.");
   }
 
   const store = snapshot.store;
-  const { selection } = await readCowartSelectionState(args);
-  const { viewState } = await readCowartViewState(args);
+  const { selection } = await readAnyCowartSelectionState(args);
+  const { viewState } = await readAnyCowartViewState(args);
   const holderShapeId = nonEmptyString(args.holderShapeId) || nonEmptyString(args.anchorShapeId) || firstSelectedShapeId(selection);
   const holderShape = holderShapeId ? getRecord(store, holderShapeId, "AI image holder shape") : null;
   const pageId =
@@ -852,14 +810,14 @@ async function saveCowartReferenceImage(args = {}) {
     Object.values(store).find((record) => record?.typeName === "page")?.id;
   if (!pageId || !store[pageId]) throw new Error("Could not determine target pageId for the reference image.");
 
-  const result = await writeCowartPageAsset(args, {
+  const result = await writeAnyCowartPageAsset(args, {
     pageId,
     fileName: args.fileName,
     dataUrl: args.dataUrl,
     dataBase64: args.dataBase64,
     mimeType: args.mimeType,
   });
-  const { projectDir } = resolveCowartPaths(args);
+  const { projectDir } = resolveAnyCowartPaths(args);
 
   return {
     ...result,
@@ -870,7 +828,7 @@ async function saveCowartReferenceImage(args = {}) {
   };
 }
 
-async function downloadCowartFile(args = {}) {
+async function downloadAnyCowartFile(args = {}) {
   const assetUrl = nonEmptyString(args.assetUrl);
   const dataUrl = nonEmptyString(args.dataUrl);
   const dataBase64 = nonEmptyString(args.dataBase64);
@@ -879,7 +837,7 @@ async function downloadCowartFile(args = {}) {
   let sourceFileName = null;
 
   if (assetUrl) {
-    const asset = await readCowartPageAsset(args, { assetUrl });
+    const asset = await readAnyCowartPageAsset(args, { assetUrl });
     buffer = Buffer.from(asset.dataBase64, "base64");
     mimeType = asset.mimeType || mimeType;
     sourceFileName = basename(asset.assetPath);
@@ -893,12 +851,12 @@ async function downloadCowartFile(args = {}) {
     throw new Error("assetUrl, dataUrl, or dataBase64 is required.");
   }
 
-  if (!buffer.length) throw new Error("Cowart download data is empty.");
+  if (!buffer.length) throw new Error("any-cowart download data is empty.");
 
   const downloadsDir = join(homedir(), "Downloads");
   const requestedName = sanitizeFileName(
     nonEmptyString(args.fileName) || sourceFileName,
-    `cowart-download-${Date.now()}.png`,
+    `any-cowart-download-${Date.now()}.png`,
   );
   const requestedDirectoryName = nonEmptyString(args.directoryName);
   const requestedSubdirectory = nonEmptyString(args.subdirectory);
@@ -915,7 +873,7 @@ async function downloadCowartFile(args = {}) {
     ? join(exportRoot, sanitizeDirectoryName(requestedSubdirectory, "pages"))
     : exportRoot;
   if (!isSafeChildPath(downloadsDir, targetDir) && targetDir !== downloadsDir) {
-    throw new Error("Invalid Cowart download directory.");
+    throw new Error("Invalid any-cowart download directory.");
   }
   await mkdir(targetDir, { recursive: true });
   const { fileName, filePath } = args.overwrite === true
@@ -934,7 +892,7 @@ async function downloadCowartFile(args = {}) {
   };
 }
 
-async function copyCowartImageToClipboard(args = {}) {
+async function copyAnyCowartImageToClipboard(args = {}) {
   const dataUrl = nonEmptyString(args.dataUrl);
   const dataBase64 = nonEmptyString(args.dataBase64);
   let buffer = null;
@@ -950,10 +908,10 @@ async function copyCowartImageToClipboard(args = {}) {
     throw new Error("dataUrl or dataBase64 is required.");
   }
 
-  if (!buffer.length) throw new Error("Cowart clipboard image data is empty.");
-  if (mimeType !== "image/png") throw new Error(`Cowart clipboard only supports image/png, received ${mimeType}.`);
+  if (!buffer.length) throw new Error("any-cowart clipboard image data is empty.");
+  if (mimeType !== "image/png") throw new Error(`any-cowart clipboard only supports image/png, received ${mimeType}.`);
   if (buffer.length < 8 || !buffer.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))) {
-    throw new Error("Cowart clipboard data is not a valid PNG image.");
+    throw new Error("any-cowart clipboard data is not a valid PNG image.");
   }
 
   const dimensions = readPngDimensions(buffer);
@@ -974,7 +932,7 @@ async function copyCowartImageToClipboard(args = {}) {
 
 function readPngDimensions(buffer) {
   if (buffer.length < 24 || buffer.toString("ascii", 12, 16) !== "IHDR") {
-    throw new Error("Cowart clipboard PNG is missing its IHDR header.");
+    throw new Error("any-cowart clipboard PNG is missing its IHDR header.");
   }
   return {
     width: buffer.readUInt32BE(16),
@@ -984,8 +942,8 @@ function readPngDimensions(buffer) {
 
 async function writePngToSystemClipboard(buffer) {
   const systemPlatform = platform();
-  const tempDir = await mkdtemp(join(tmpdir(), "cowart-clipboard-"));
-  const pngPath = join(tempDir, "cowart-copy.png");
+  const tempDir = await mkdtemp(join(tmpdir(), "any-cowart-clipboard-"));
+  const pngPath = join(tempDir, "any-cowart-copy.png");
 
   try {
     await writeFile(pngPath, buffer);
@@ -1004,41 +962,41 @@ async function writePngToSystemClipboard(buffer) {
       const script = [
         "Add-Type -AssemblyName System.Windows.Forms",
         "Add-Type -AssemblyName System.Drawing",
-        "$image = [System.Drawing.Image]::FromFile($env:COWART_CLIPBOARD_PNG_PATH)",
+        "$image = [System.Drawing.Image]::FromFile($env:ANY_COWART_CLIPBOARD_PNG_PATH)",
         "try { [System.Windows.Forms.Clipboard]::SetImage($image) } finally { $image.Dispose() }",
       ].join("; ");
       await execFileAsync(
         "powershell.exe",
         ["-NoProfile", "-STA", "-Command", script],
         {
-          env: { ...process.env, COWART_CLIPBOARD_PNG_PATH: pngPath },
+          env: { ...process.env, ANY_COWART_CLIPBOARD_PNG_PATH: pngPath },
           timeout: 10000,
         },
       );
       return;
     }
 
-    throw new Error(`Cowart system clipboard is not supported on ${systemPlatform}.`);
+    throw new Error(`any-cowart system clipboard is not supported on ${systemPlatform}.`);
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith("Cowart system clipboard")) throw error;
+    if (error instanceof Error && error.message.startsWith("any-cowart system clipboard")) throw error;
     throw new Error(`系统剪贴板写入失败：${error instanceof Error ? error.message : String(error)}`);
   } finally {
     await rm(tempDir, { recursive: true, force: true }).catch(() => undefined);
   }
 }
 
-function registerCowartWidget(mcpServer) {
+function registerAnyCowartWidget(mcpServer) {
   registerWidgetResource(mcpServer, {
-    name: "cowart-canvas-widget",
-    uri: COWART_WIDGET_URI,
-    title: "Cowart Canvas",
+    name: "any-cowart-canvas-widget",
+    uri: ANY_COWART_WIDGET_URI,
+    title: "any-cowart Canvas",
     description:
-      "A native Codex widget that renders Cowart's tldraw canvas directly and persists canvas data in the active project.",
-    connectDomains: COWART_CONNECT_DOMAINS,
-    resourceDomains: COWART_RESOURCE_DOMAINS,
-    frameDomains: COWART_FRAME_DOMAINS,
+      "A native Codex widget that renders any-cowart's tldraw canvas directly and persists canvas data in the active project.",
+    connectDomains: ANY_COWART_CONNECT_DOMAINS,
+    resourceDomains: ANY_COWART_RESOURCE_DOMAINS,
+    frameDomains: ANY_COWART_FRAME_DOMAINS,
     html: async () => inlineWidget({
-      html: await cowartStaticHtml(),
+      html: await anyCowartStaticHtml(),
       appVersion: pluginManifest.version,
       initialDisplayMode: DEFAULT_DISPLAY_MODE,
     }),
@@ -1048,9 +1006,9 @@ function registerCowartWidget(mcpServer) {
     mcpServer,
     TOOL_RENDER_WIDGET,
     {
-      title: "Render Cowart Canvas Widget",
+      title: "Render any-cowart Canvas Widget",
       description:
-        "Open, reopen, or explicitly refresh the native Cowart canvas for the active Codex project. Pass projectDir for the user's workspace so canvas data is stored under <projectDir>/canvas. A successful call creates a widget surface, so do not use this tool as a routine prerequisite when a Cowart canvas is already open.",
+        "Open, reopen, or explicitly refresh the native any-cowart canvas for the active Codex project. Pass projectDir for the user's workspace so canvas data is stored under <projectDir>/canvas. A successful call creates a widget surface, so do not use this tool as a routine prerequisite when an any-cowart canvas is already open.",
       inputSchema: {
         ...projectArgsSchema,
         title: z.string().trim().optional(),
@@ -1064,44 +1022,44 @@ function registerCowartWidget(mcpServer) {
       },
       _meta: {
         ui: {
-          resourceUri: COWART_WIDGET_URI,
+          resourceUri: ANY_COWART_WIDGET_URI,
           visibility: ["model", "app"],
         },
-        "ui/resourceUri": COWART_WIDGET_URI,
-        "openai/outputTemplate": COWART_WIDGET_URI,
+        "ui/resourceUri": ANY_COWART_WIDGET_URI,
+        "openai/outputTemplate": ANY_COWART_WIDGET_URI,
         "openai/widgetAccessible": true,
-        "openai/toolInvocation/invoking": "Opening Cowart canvas...",
-        "openai/toolInvocation/invoked": "Cowart canvas ready",
+        "openai/toolInvocation/invoking": "Opening any-cowart canvas...",
+        "openai/toolInvocation/invoked": "any-cowart canvas ready",
       },
     },
     async (input = {}) => {
-      const { projectDir, canvasDir } = resolveCowartPaths(input);
-      const title = nonEmptyString(input.title) || "Cowart Canvas";
+      const { projectDir, canvasDir } = resolveAnyCowartPaths(input);
+      const title = nonEmptyString(input.title) || "any-cowart Canvas";
       const preferredDisplayMode = normalizeDisplayMode(input.displayMode);
 
       return {
         content: [
           {
             type: "text",
-            text: "Rendered Cowart canvas widget.",
+            text: "Rendered any-cowart canvas widget.",
           },
         ],
         structuredContent: {
           version: 1,
-          widget: "cowart-canvas-widget",
+          widget: "any-cowart-canvas-widget",
           title,
           rendering: "native-widget",
-          staticDir: COWART_STATIC_BUILD_DIR,
+          staticDir: ANY_COWART_STATIC_BUILD_DIR,
           projectDir,
           canvasDir,
           preferredDisplayMode,
         },
         _meta: {
-          "openai/outputTemplate": COWART_WIDGET_URI,
+          "openai/outputTemplate": ANY_COWART_WIDGET_URI,
           widgetData: {
             title,
             rendering: "native-widget",
-            staticDir: COWART_STATIC_BUILD_DIR,
+            staticDir: ANY_COWART_STATIC_BUILD_DIR,
             projectDir,
             canvasDir,
             preferredDisplayMode,
@@ -1112,83 +1070,13 @@ function registerCowartWidget(mcpServer) {
   );
 }
 
-function registerCowartAnalyticsTools(mcpServer) {
-  registerAppTool(
-    mcpServer,
-    TOOL_TRACK_ANALYTICS,
-    {
-      title: "Track Cowart analytics event",
-      description:
-        "Use this when the Cowart widget records an anonymous product-usage event in Google Analytics.",
-      inputSchema: {
-        clientId: z.string().trim().min(1).max(128),
-        eventName: z.enum(COWART_GA4_EVENT_NAMES),
-        appVersion: z.string().trim().min(1).max(32),
-        parameters: z.object({
-          annotation_type: z.enum(["arrow"]).optional(),
-          ai_type: z.enum(["image", "html", "slides"]).optional(),
-          has_reference: z.enum(["yes", "no"]).optional(),
-          page_count: z.number().int().min(1).max(100).optional(),
-          prompt_type: z.enum([
-            "ai_image",
-            "ai_html",
-            "ai_slides",
-            "annotation_edit",
-            "annotation_html",
-            "slides_annotation_edit",
-            "html_annotation_edit",
-            "html_annotation_image",
-            "other",
-          ]).optional(),
-        }).optional(),
-      },
-      annotations: {
-        readOnlyHint: false,
-        destructiveHint: false,
-        idempotentHint: false,
-        openWorldHint: true,
-      },
-      _meta: {
-        ui: {
-          visibility: ["app"],
-        },
-        "openai/widgetAccessible": true,
-      },
-    },
-    async ({ clientId, eventName, appVersion, parameters }) => {
-      try {
-        const result = await sendCowartGa4Event({
-          clientId,
-          eventName,
-          appVersion,
-          parameters,
-        });
-        return {
-          content: [],
-          structuredContent: result,
-        };
-      } catch (error) {
-        console.warn(`Cowart analytics delivery failed: ${error instanceof Error ? error.message : String(error)}`);
-        return {
-          content: [],
-          structuredContent: {
-            configured: true,
-            delivered: false,
-            status: null,
-          },
-        };
-      }
-    },
-  );
-}
-
-function registerCowartStateTools(mcpServer) {
+function registerAnyCowartStateTools(mcpServer) {
   mcpServer.registerTool(
     TOOL_GET_CANVAS_STATE,
     {
-      title: "Get Cowart Canvas State",
+      title: "Get any-cowart Canvas State",
       description:
-        "Read the project-backed Cowart canvas snapshot, view state, and storage paths. The widget uses this instead of a localhost /api/canvas request.",
+        "Read the project-backed any-cowart canvas snapshot, view state, and storage paths. The widget uses this instead of a localhost /api/canvas request.",
       inputSchema: {
         ...projectArgsSchema,
         hydrateAssets: z.boolean().optional(),
@@ -1201,12 +1089,12 @@ function registerCowartStateTools(mcpServer) {
       },
     },
     async (input = {}) => {
-      const state = await readCowartCanvasState(input, { hydrateAssets: input.hydrateAssets === true });
+      const state = await readAnyCowartCanvasState(input, { hydrateAssets: input.hydrateAssets === true });
       return {
         content: [
           {
             type: "text",
-            text: `Loaded Cowart canvas state from ${state.canvasDir} (${state.storage}).`,
+            text: `Loaded any-cowart canvas state from ${state.canvasDir} (${state.storage}).`,
           },
         ],
         structuredContent: state,
@@ -1217,9 +1105,9 @@ function registerCowartStateTools(mcpServer) {
   mcpServer.registerTool(
     TOOL_READ_PAGE_ASSET,
     {
-      title: "Read Cowart Page Asset",
+      title: "Read any-cowart Page Asset",
       description:
-        "Read one project-local Cowart /page-assets/... image or HTML asset for lazy widget rendering. Prefer this over hydrating all assets into the canvas snapshot.",
+        "Read one project-local any-cowart /page-assets/... image or HTML asset for lazy widget rendering. Prefer this over hydrating all assets into the canvas snapshot.",
       inputSchema: {
         ...projectArgsSchema,
         assetUrl: z.string().trim(),
@@ -1232,12 +1120,12 @@ function registerCowartStateTools(mcpServer) {
       },
     },
     async (input = {}) => {
-      const asset = await readCowartPageAsset(input, { assetUrl: input.assetUrl });
+      const asset = await readAnyCowartPageAsset(input, { assetUrl: input.assetUrl });
       return {
         content: [
           {
             type: "text",
-            text: `Loaded Cowart page asset ${asset.assetUrl}.`,
+            text: `Loaded any-cowart page asset ${asset.assetUrl}.`,
           },
         ],
         structuredContent: asset,
@@ -1248,9 +1136,9 @@ function registerCowartStateTools(mcpServer) {
   mcpServer.registerTool(
     TOOL_SAVE_CANVAS_STATE,
     {
-      title: "Save Cowart Canvas State",
+      title: "Save any-cowart Canvas State",
       description:
-        "Persist a Cowart/tldraw store snapshot to the project canvas directory, preserving per-page files and page-local assets.",
+        "Persist an any-cowart/tldraw store snapshot to the project canvas directory, preserving per-page files and page-local assets.",
       inputSchema: {
         ...projectArgsSchema,
         snapshot: z.any(),
@@ -1265,14 +1153,14 @@ function registerCowartStateTools(mcpServer) {
       },
     },
     async (input = {}) => {
-      const result = await saveCowartCanvasSnapshot(input, input.snapshot);
+      const result = await saveAnyCowartCanvasSnapshot(input, input.snapshot);
       if (!result.ok) {
         return {
           isError: true,
           content: [
             {
               type: "text",
-              text: result.message || "Invalid Cowart canvas snapshot.",
+              text: result.message || "Invalid any-cowart canvas snapshot.",
             },
           ],
           structuredContent: result,
@@ -1282,7 +1170,7 @@ function registerCowartStateTools(mcpServer) {
         content: [
           {
             type: "text",
-            text: `Saved Cowart canvas state (${result.storage}).`,
+            text: `Saved any-cowart canvas state (${result.storage}).`,
           },
         ],
         structuredContent: result,
@@ -1293,9 +1181,9 @@ function registerCowartStateTools(mcpServer) {
   mcpServer.registerTool(
     TOOL_SAVE_SELECTION_STATE,
     {
-      title: "Save Cowart Selection State",
+      title: "Save any-cowart Selection State",
       description:
-        "Persist the current Cowart widget selection to canvas/cowart-selection.json so Codex can target selected shapes.",
+        "Persist the current any-cowart widget selection to canvas/any-cowart-selection.json so Codex can target selected shapes.",
       inputSchema: {
         ...projectArgsSchema,
         selection: z.any(),
@@ -1308,12 +1196,12 @@ function registerCowartStateTools(mcpServer) {
       },
     },
     async (input = {}) => {
-      const result = await writeCowartSelectionState(input, input.selection);
+      const result = await writeAnyCowartSelectionState(input, input.selection);
       return {
         content: [
           {
             type: "text",
-            text: `Saved Cowart selection state to ${result.path}.`,
+            text: `Saved any-cowart selection state to ${result.path}.`,
           },
         ],
         structuredContent: result,
@@ -1324,9 +1212,9 @@ function registerCowartStateTools(mcpServer) {
   mcpServer.registerTool(
     TOOL_SAVE_VIEW_STATE,
     {
-      title: "Save Cowart View State",
+      title: "Save any-cowart View State",
       description:
-        "Persist the current Cowart page and camera state to canvas/cowart-view-state.json.",
+        "Persist the current any-cowart page and camera state to canvas/any-cowart-view-state.json.",
       inputSchema: {
         ...projectArgsSchema,
         viewState: z.any(),
@@ -1339,12 +1227,12 @@ function registerCowartStateTools(mcpServer) {
       },
     },
     async (input = {}) => {
-      const result = await writeCowartViewState(input, input.viewState);
+      const result = await writeAnyCowartViewState(input, input.viewState);
       return {
         content: [
           {
             type: "text",
-            text: `Saved Cowart view state to ${result.path}.`,
+            text: `Saved any-cowart view state to ${result.path}.`,
           },
         ],
         structuredContent: result,
@@ -1353,14 +1241,14 @@ function registerCowartStateTools(mcpServer) {
   );
 }
 
-function registerCowartImageTools(mcpServer) {
+function registerAnyCowartImageTools(mcpServer) {
   registerAppTool(
     mcpServer,
     TOOL_COPY_IMAGE_TO_CLIPBOARD,
     {
-      title: "Copy Cowart PNG to system clipboard",
+      title: "Copy any-cowart PNG to system clipboard",
       description:
-        "Copy a PNG rendered by the Cowart widget to the local system clipboard when the widget iframe cannot use the browser Clipboard API.",
+        "Copy a PNG rendered by the any-cowart widget to the local system clipboard when the widget iframe cannot use the browser Clipboard API.",
       inputSchema: {
         ...projectArgsSchema,
         dataUrl: z.string().optional(),
@@ -1382,14 +1270,14 @@ function registerCowartImageTools(mcpServer) {
       },
     },
     async (input = {}) => {
-      const result = await copyCowartImageToClipboard(input);
+      const result = await copyAnyCowartImageToClipboard(input);
       return {
         content: [
           {
             type: "text",
             text: result.dryRun
-              ? `Validated Cowart clipboard PNG (${result.width}x${result.height}).`
-              : `Copied Cowart PNG to the system clipboard (${result.width}x${result.height}).`,
+              ? `Validated any-cowart clipboard PNG (${result.width}x${result.height}).`
+              : `Copied any-cowart PNG to the system clipboard (${result.width}x${result.height}).`,
           },
         ],
         structuredContent: result,
@@ -1400,9 +1288,9 @@ function registerCowartImageTools(mcpServer) {
   mcpServer.registerTool(
     TOOL_DOWNLOAD_FILE,
     {
-      title: "Download Cowart File",
+      title: "Download any-cowart File",
       description:
-        "Save an image, HTML draft, or exported Slides package file requested by the Cowart widget into the user's system Downloads folder.",
+        "Save an image, HTML draft, or exported Slides package file requested by the any-cowart widget into the user's system Downloads folder.",
       inputSchema: {
         ...projectArgsSchema,
         assetUrl: z.string().trim().optional(),
@@ -1423,12 +1311,12 @@ function registerCowartImageTools(mcpServer) {
       },
     },
     async (input = {}) => {
-      const result = await downloadCowartFile(input);
+      const result = await downloadAnyCowartFile(input);
       return {
         content: [
           {
             type: "text",
-            text: `Downloaded Cowart file to ${result.filePath}.`,
+            text: `Downloaded any-cowart file to ${result.filePath}.`,
           },
         ],
         structuredContent: result,
@@ -1439,9 +1327,9 @@ function registerCowartImageTools(mcpServer) {
   mcpServer.registerTool(
     TOOL_SAVE_REFERENCE_IMAGE,
     {
-      title: "Save Cowart Reference Image",
+      title: "Save any-cowart Reference Image",
       description:
-        "Save a widget-selected reference image into the current Cowart page's assets folder so Codex can read it from the local project when ui/message image attachments are unavailable.",
+        "Save a widget-selected reference image into the current any-cowart page's assets folder so Codex can read it from the local project when ui/message image attachments are unavailable.",
       inputSchema: {
         ...projectArgsSchema,
         holderShapeId: z.string().trim().optional(),
@@ -1460,12 +1348,12 @@ function registerCowartImageTools(mcpServer) {
       },
     },
     async (input = {}) => {
-      const result = await saveCowartReferenceImage(input);
+      const result = await saveAnyCowartReferenceImage(input);
       return {
         content: [
           {
             type: "text",
-            text: `Saved Cowart reference image to ${result.assetPath}.`,
+            text: `Saved any-cowart reference image to ${result.assetPath}.`,
           },
         ],
         structuredContent: result,
@@ -1476,9 +1364,9 @@ function registerCowartImageTools(mcpServer) {
   mcpServer.registerTool(
     TOOL_INSERT_HTML_DRAFT,
     {
-      title: "Insert Cowart HTML Draft",
+      title: "Insert any-cowart HTML Draft",
       description:
-        "Save a single-file HTML draft into the current Cowart page's assets folder, update a targeted existing HTML draft in place, replace a targeted AI HTML holder, or append a 16:9 HTML page inside an AI Slides frame.",
+        "Save a single-file HTML draft into the current any-cowart page's assets folder, update a targeted existing HTML draft in place, replace a targeted AI HTML holder, or append a 16:9 HTML page inside an AI Slides frame.",
       inputSchema: {
         ...projectArgsSchema,
         htmlContent: z.string().optional(),
@@ -1505,7 +1393,7 @@ function registerCowartImageTools(mcpServer) {
       },
     },
     async (input = {}) => {
-      const result = await insertCowartHtmlDraft(input);
+      const result = await insertAnyCowartHtmlDraft(input);
       return {
         content: [
           {
@@ -1521,9 +1409,9 @@ function registerCowartImageTools(mcpServer) {
   mcpServer.registerTool(
     TOOL_GET_SELECTION,
     {
-      title: "Get Cowart Selection",
+      title: "Get any-cowart Selection",
       description:
-        "Return the currently selected Cowart/tldraw shapes and image asset metadata from a project's canvas/cowart-selection.json state file.",
+        "Return the currently selected any-cowart/tldraw shapes and image asset metadata from a project's canvas/any-cowart-selection.json state file.",
       inputSchema: projectArgsSchema,
       annotations: {
         readOnlyHint: true,
@@ -1533,11 +1421,11 @@ function registerCowartImageTools(mcpServer) {
       },
     },
     async (input = {}) => {
-      const { selection, selectionFile } = await readCowartSelectionState(input);
+      const { selection, selectionFile } = await readAnyCowartSelectionState(input);
       const selectedShapes = selection.selectedShapes ?? [];
       const summary =
         selectedShapes.length === 0
-          ? "No Cowart shapes are currently selected."
+          ? "No any-cowart shapes are currently selected."
           : selectedShapes
               .map((shape) => {
                 const assetName = shape.asset?.name ? ` (${shape.asset.name})` : "";
@@ -1555,14 +1443,14 @@ function registerCowartImageTools(mcpServer) {
   mcpServer.registerTool(
     TOOL_INSERT_IMAGE,
     {
-      title: "Insert Cowart Image",
+      title: "Insert any-cowart Image",
       description:
-        "Copy a local bitmap into a Cowart page-local assets folder, create a tldraw image asset and shape, replace a targeted AI image holder by default, otherwise place it beside an anchor or clear page area, and save the project-backed Cowart canvas.",
+        "Copy a local bitmap into an any-cowart page-local assets folder, create a tldraw image asset and shape, replace a targeted AI image holder by default, otherwise place it beside an anchor or clear page area, and save the project-backed any-cowart canvas.",
       inputSchema: {
         imagePath: z.string().trim(),
         projectDir: z.string().trim().optional(),
         canvasDir: z.string().trim().optional(),
-        cowartUrl: z.string().trim().optional(),
+        anyCowartUrl: z.string().trim().optional(),
         pageId: z.string().trim().optional(),
         anchorShapeId: z.string().trim().optional(),
         sourceShapeId: z.string().trim().optional(),
@@ -1587,7 +1475,7 @@ function registerCowartImageTools(mcpServer) {
       },
     },
     async (input = {}) => {
-      const result = await insertCowartImage(input);
+      const result = await insertAnyCowartImage(input);
       return {
         content: [
           {

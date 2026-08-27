@@ -15,7 +15,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const sandboxDir = await mkdtemp(path.join(tmpdir(), "cowart-cold-install-"));
+const sandboxDir = await mkdtemp(path.join(tmpdir(), "any-cowart-cold-install-"));
 
 try {
   const pluginDir = path.join(sandboxDir, "plugin");
@@ -33,14 +33,40 @@ try {
     ? path.join(sentinelBinDir, "npm.cmd")
     : path.join(sentinelBinDir, "npm");
   const npmScript = process.platform === "win32"
-    ? "@echo called>%COWART_NPM_SENTINEL%\r\n@exit /b 99\r\n"
-    : "#!/bin/sh\nprintf called > \"$COWART_NPM_SENTINEL\"\nexit 99\n";
+    ? "@echo called>%ANY_COWART_NPM_SENTINEL%\r\n@exit /b 99\r\n"
+    : "#!/bin/sh\nprintf called > \"$ANY_COWART_NPM_SENTINEL\"\nexit 99\n";
   await writeFile(npmCommand, npmScript);
   if (process.platform !== "win32") await chmod(npmCommand, 0o755);
 
   assert.equal(await pathExists(path.join(pluginDir, "node_modules")), false);
-  assert.equal(await pathExists(path.join(pluginDir, "mcp", "generated", "cowart-mcp.mjs")), true);
-  assert.equal(await pathExists(path.join(pluginDir, "mcp", "generated", "cowart-widget.html")), true);
+  assert.equal(await pathExists(path.join(pluginDir, "mcp", "generated", "any-cowart-mcp.mjs")), true);
+  assert.equal(await pathExists(path.join(pluginDir, "mcp", "generated", "any-cowart-widget.html")), true);
+  assert.equal(await pathExists(path.join(pluginDir, "vendor", "codex-image", "LICENSE")), true);
+
+  const bundledCodexImageScript = path.join(
+    pluginDir,
+    "vendor",
+    "codex-image",
+    "scripts",
+    "generate-image.mjs",
+  );
+  assert.equal(await pathExists(bundledCodexImageScript), true);
+  const codexImageHelp = spawnSync(process.execPath, [bundledCodexImageScript, "--help"], {
+    cwd: pluginDir,
+    env: {
+      ...process.env,
+      ANY_COWART_NPM_SENTINEL: npmSentinel,
+      NODE_PATH: "",
+      PATH: `${sentinelBinDir}${path.delimiter}${process.env.PATH || ""}`,
+      TEMP: cleanTmpDir,
+      TMP: cleanTmpDir,
+      TMPDIR: cleanTmpDir,
+    },
+    encoding: "utf8",
+    timeout: 10_000,
+  });
+  assert.equal(codexImageHelp.status, 0, codexImageHelp.stderr);
+  assert.match(codexImageHelp.stdout, /^codex-image/u);
 
   const probe = spawnSync(
     process.execPath,
@@ -55,7 +81,7 @@ try {
       cwd: ROOT_DIR,
       env: {
         ...process.env,
-        COWART_NPM_SENTINEL: npmSentinel,
+        ANY_COWART_NPM_SENTINEL: npmSentinel,
         NODE_PATH: "",
         PATH: `${sentinelBinDir}${path.delimiter}${process.env.PATH || ""}`,
         TEMP: cleanTmpDir,
@@ -71,7 +97,7 @@ try {
   if (probe.stderr) process.stderr.write(probe.stderr);
   if (probe.error) throw probe.error;
   if (probe.status !== 0) {
-    throw new Error(`Cowart cold-install probe failed with exit ${probe.status}.`);
+    throw new Error(`any-cowart cold-install probe failed with exit ${probe.status}.`);
   }
 
   assert.equal(
@@ -86,12 +112,12 @@ try {
   );
   const temporaryEntries = await readdir(cleanTmpDir);
   assert.equal(
-    temporaryEntries.some((name) => name.startsWith("cowart-widget-build-v")),
+    temporaryEntries.some((name) => name.startsWith("any-cowart-widget-build-v")),
     false,
     "Cold startup must not build the widget into a temporary directory.",
   );
 
-  console.log("OK: A dependency-free Cowart install exposes tools and renders the widget without npm.");
+  console.log("OK: A dependency-free any-cowart install exposes tools and renders the widget without npm.");
 } finally {
   await rm(sandboxDir, { recursive: true, force: true });
 }

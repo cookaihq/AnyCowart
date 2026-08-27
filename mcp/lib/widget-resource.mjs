@@ -10,8 +10,8 @@ export function inlineWidget({
   js = "",
   appVersion,
   initialDisplayMode = "",
-  cssPlaceholder = "/* __COWART_WIDGET_CSS__ */",
-  jsPlaceholder = "/* __COWART_WIDGET_JS__ */",
+  cssPlaceholder = "/* __ANY_COWART_WIDGET_CSS__ */",
+  jsPlaceholder = "/* __ANY_COWART_WIDGET_JS__ */",
 }) {
   return injectMcpHostBridge(
     html.replace(cssPlaceholder, () => css).replace(jsPlaceholder, () => js),
@@ -82,13 +82,13 @@ export function registerWidgetResource(
 
 function injectMcpHostBridge(html, { appVersion, initialDisplayMode = "" } = {}) {
   const bridge = [
-    '<script id="cowartInitialDisplayMode">',
-    `window.__COWART_INITIAL_DISPLAY_MODE__=${JSON.stringify(initialDisplayMode)};`,
+    '<script id="anyCowartInitialDisplayMode">',
+    `window.__ANY_COWART_INITIAL_DISPLAY_MODE__=${JSON.stringify(initialDisplayMode)};`,
     "</script>",
-    '<script id="cowartMcpAppsBundle">',
+    '<script id="anyCowartMcpAppsBundle">',
     escapeInlineScript(MCP_APPS_GLOBAL_SCRIPT),
     "</script>",
-    '<script id="cowartMcpHostBridge">',
+    '<script id="anyCowartMcpHostBridge">',
     mcpHostBridgeScript(appVersion),
     "</script>",
   ].join("\n");
@@ -105,13 +105,13 @@ function escapeInlineScript(source) {
 
 function mcpHostBridgeScript(appVersion) {
   if (typeof appVersion !== "string" || !appVersion.trim()) {
-    throw new Error("Cowart widget bridge requires the plugin version.");
+    throw new Error("any-cowart widget bridge requires the plugin version.");
   }
 
   return `(() => {
   "use strict";
 
-  const apps = globalThis.__COWART_MCP_APPS__;
+  const apps = globalThis.__ANY_COWART_MCP_APPS__;
   if (!apps || typeof apps.App !== "function") return;
 
   let mcpApp = null;
@@ -169,7 +169,7 @@ function mcpHostBridgeScript(appVersion) {
 
   function toBridgeError(error) {
     if (error instanceof Error) return error;
-    return new Error(String(error || "Cowart host bridge is unavailable."));
+    return new Error(String(error || "any-cowart host bridge is unavailable."));
   }
 
   function currentSize() {
@@ -197,16 +197,16 @@ function mcpHostBridgeScript(appVersion) {
 
   async function waitForReady(app) {
     if (app?.ready) {
-      await withTimeout(app.ready, 4000, "Cowart host bridge did not become ready.");
+      await withTimeout(app.ready, 4000, "any-cowart host bridge did not become ready.");
     }
-    if (globalThis.__COWART_MCP_HOST_ERROR__) {
-      throw toBridgeError(globalThis.__COWART_MCP_HOST_ERROR__);
+    if (globalThis.__ANY_COWART_MCP_HOST_ERROR__) {
+      throw toBridgeError(globalThis.__ANY_COWART_MCP_HOST_ERROR__);
     }
   }
 
-  function installCowartApi(app) {
-    const api = window.cowartMcp || {};
-    window.cowartMcp = api;
+  function installAnyCowartApi(app) {
+    const api = window.anyCowartMcp || {};
+    window.anyCowartMcp = api;
 
     api.sendFollowUpMessage = async (message) => {
       try {
@@ -232,7 +232,7 @@ function mcpHostBridgeScript(appVersion) {
         return await withTimeout(
           app.callServerTool(request, options),
           options?.timeoutMs || 30000,
-          "Cowart server tool call timed out.",
+          "any-cowart server tool call timed out.",
         );
       } catch (error) {
         throw toBridgeError(error);
@@ -292,35 +292,35 @@ function mcpHostBridgeScript(appVersion) {
 
   try {
     mcpApp = new apps.App(
-      { name: "cowart", version: ${JSON.stringify(appVersion)} },
+      { name: "any-cowart", version: ${JSON.stringify(appVersion)} },
       { availableDisplayModes: ["inline", "fullscreen"] },
       { autoResize: true },
     );
-    globalThis.__COWART_MCP_APP__ = mcpApp;
-    installCowartApi(mcpApp);
+    globalThis.__ANY_COWART_MCP_APP__ = mcpApp;
+    installAnyCowartApi(mcpApp);
 
     mcpApp.addEventListener("hostcontextchanged", applyHostContext);
     mcpApp.addEventListener("toolresult", handleToolResult);
 
     mcpApp.ready = mcpApp.connect()
       .then(() => {
-        installCowartApi(mcpApp);
+        installAnyCowartApi(mcpApp);
         publishHostGlobals({
           hostCapabilities: mcpApp.getHostCapabilities && mcpApp.getHostCapabilities(),
           hostInfo: mcpApp.getHostVersion && mcpApp.getHostVersion(),
         });
         applyHostContext(mcpApp.getHostContext && mcpApp.getHostContext());
-        const initialMode = window.__COWART_INITIAL_DISPLAY_MODE__;
+        const initialMode = window.__ANY_COWART_INITIAL_DISPLAY_MODE__;
         if (initialMode === "fullscreen" && typeof mcpApp.requestDisplayMode === "function") {
           mcpApp.requestDisplayMode({ mode: "fullscreen" }).catch(() => {});
         }
         sendCurrentSize();
       })
       .catch((error) => {
-        globalThis.__COWART_MCP_HOST_ERROR__ = error;
+        globalThis.__ANY_COWART_MCP_HOST_ERROR__ = error;
       });
   } catch (error) {
-    globalThis.__COWART_MCP_HOST_ERROR__ = error;
+    globalThis.__ANY_COWART_MCP_HOST_ERROR__ = error;
   }
 })();`;
 }

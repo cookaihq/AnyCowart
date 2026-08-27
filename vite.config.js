@@ -5,18 +5,26 @@ import { createReadStream, readFileSync } from 'node:fs'
 import { copyFile, mkdir, readFile, readdir, rename, stat, writeFile } from 'node:fs/promises'
 import { basename, dirname, extname, join, relative, resolve, sep } from 'node:path'
 
-const projectDir = resolve(process.env.COWART_PROJECT_DIR ?? process.cwd())
-const cowartAppVersion = JSON.parse(
+const projectDir = resolve(
+  process.env.ANY_COWART_PROJECT_DIR ?? process.env.COWART_PROJECT_DIR ?? process.cwd()
+)
+const anyCowartAppVersion = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf8')
 ).version
-const canvasDir = resolve(process.env.COWART_CANVAS_DIR ?? join(projectDir, 'canvas'))
-const canvasFile = join(canvasDir, 'cowart-canvas.json')
-const selectionFile = join(canvasDir, 'cowart-selection.json')
-const viewStateFile = join(canvasDir, 'cowart-view-state.json')
+const canvasDir = resolve(
+  process.env.ANY_COWART_CANVAS_DIR ?? process.env.COWART_CANVAS_DIR ?? join(projectDir, 'canvas')
+)
+const canvasFile = join(canvasDir, 'any-cowart-canvas.json')
+const legacyCanvasFile = join(canvasDir, 'cowart-canvas.json')
+const selectionFile = join(canvasDir, 'any-cowart-selection.json')
+const legacySelectionFile = join(canvasDir, 'cowart-selection.json')
+const viewStateFile = join(canvasDir, 'any-cowart-view-state.json')
+const legacyViewStateFile = join(canvasDir, 'cowart-view-state.json')
 const canvasPagesDir = join(canvasDir, 'pages')
 const canvasAssetsDir = join(canvasDir, 'assets')
 const pagesManifestFile = join(canvasPagesDir, 'manifest.json')
-const canvasFileName = 'cowart-canvas.json'
+const canvasFileName = 'any-cowart-canvas.json'
+const legacyCanvasFileName = 'cowart-canvas.json'
 const pageIdPrefix = 'page:'
 const globalAssetsRoute = '/assets/'
 const pageAssetsRoute = '/page-assets/'
@@ -318,7 +326,7 @@ async function localizePageAsset(asset, pageId) {
 }
 
 function isHtmlDraftShapeRecord(record) {
-  return record?.typeName === 'shape' && record.type === 'embed' && record.meta?.cowartHtmlDraft === true
+  return record?.typeName === 'shape' && record.type === 'embed' && record.meta?.anyCowartHtmlDraft === true
 }
 
 function pageIdForShape(store, shape) {
@@ -361,7 +369,7 @@ async function updateHtmlDraftSnapshot(snapshot, { draftShapeId, htmlContent }) 
   const pageId = pageIdForShape(snapshot.store, shape)
   if (!pageId) throw new Error(`Could not determine page for HTML draft: ${draftShapeId}`)
 
-  const existingAssetUrl = shape.meta?.cowartHtmlDraftAssetUrl
+  const existingAssetUrl = shape.meta?.anyCowartHtmlDraftAssetUrl
   const expectedPrefix = `${pageAssetsRoute}${pageDirName(pageId)}/`
   const sharedAsset =
     typeof existingAssetUrl === 'string' &&
@@ -369,7 +377,7 @@ async function updateHtmlDraftSnapshot(snapshot, { draftShapeId, htmlContent }) 
       (record) =>
         record?.id !== draftShapeId &&
         isHtmlDraftShapeRecord(record) &&
-        record.meta?.cowartHtmlDraftAssetUrl === existingAssetUrl
+        record.meta?.anyCowartHtmlDraftAssetUrl === existingAssetUrl
     )
 
   let assetUrl = existingAssetUrl
@@ -394,8 +402,8 @@ async function updateHtmlDraftSnapshot(snapshot, { draftShapeId, htmlContent }) 
     ...shape,
     meta: {
       ...shape.meta,
-      cowartHtmlDraft: true,
-      cowartHtmlDraftAssetUrl: assetUrl
+      anyCowartHtmlDraft: true,
+      anyCowartHtmlDraftAssetUrl: assetUrl
     },
     props: {
       ...shape.props,
@@ -410,13 +418,13 @@ async function persistHtmlDraftAsset(record, pageId) {
   if (
     record?.typeName !== 'shape' ||
     record.type !== 'embed' ||
-    record.meta?.cowartHtmlDraft !== true ||
+    record.meta?.anyCowartHtmlDraft !== true ||
     typeof record.props?.url !== 'string'
   ) {
     return record
   }
 
-  const assetUrl = record.meta?.cowartHtmlDraftAssetUrl
+  const assetUrl = record.meta?.anyCowartHtmlDraftAssetUrl
   const expectedPrefix = `${pageAssetsRoute}${pageDirName(pageId)}/`
   if (typeof assetUrl !== 'string' || !assetUrl.startsWith(expectedPrefix)) return record
 
@@ -447,6 +455,15 @@ async function readJsonFile(filePath) {
   return JSON.parse(await readFile(filePath, 'utf8'))
 }
 
+async function readJsonFileWithFallback(primaryPath, oldPath) {
+  try {
+    return { value: await readJsonFile(primaryPath), path: primaryPath }
+  } catch (error) {
+    if (error?.code !== 'ENOENT') throw error
+  }
+  return { value: await readJsonFile(oldPath), path: oldPath }
+}
+
 async function readPageSnapshots() {
   let entries
   try {
@@ -459,9 +476,11 @@ async function readPageSnapshots() {
   const snapshots = []
   for (const entry of entries) {
     if (!entry.isDirectory()) continue
-    const filePath = join(canvasPagesDir, entry.name, canvasFileName)
     try {
-      const snapshot = await readJsonFile(filePath)
+      const { value: snapshot, path: filePath } = await readJsonFileWithFallback(
+        join(canvasPagesDir, entry.name, canvasFileName),
+        join(canvasPagesDir, entry.name, legacyCanvasFileName)
+      )
       if (isCanvasSnapshot(snapshot)) snapshots.push({ filePath, snapshot })
     } catch (error) {
       if (error.code !== 'ENOENT') throw error
@@ -490,9 +509,10 @@ async function loadCanvasSnapshot() {
   }
 
   try {
+    const { value: snapshot, path } = await readJsonFileWithFallback(canvasFile, legacyCanvasFile)
     return {
-      snapshot: await readJsonFile(canvasFile),
-      path: canvasFile,
+      snapshot,
+      path,
       storage: 'legacy-single-file'
     }
   } catch (error) {
@@ -527,7 +547,7 @@ async function saveCanvasSnapshot(snapshot) {
 
   const manifest = {
     version: 1,
-    source: 'cowart',
+    source: 'any-cowart',
     pages: pages.map((page) => ({
       id: page.id,
       name: page.name,
@@ -578,7 +598,7 @@ async function serveCanvasAsset(req, res, next) {
 
 function canvasStoragePlugin() {
   return {
-    name: 'cowart-canvas-storage',
+    name: 'any-cowart-canvas-storage',
     configureServer(server) {
       server.middlewares.use(serveCanvasAsset)
 
@@ -594,7 +614,7 @@ function canvasStoragePlugin() {
           const body = JSON.parse(await readRequestBody(req))
           const loaded = await loadCanvasSnapshot()
           if (!loaded.snapshot) {
-            sendJson(res, 404, { error: 'No Cowart canvas snapshot exists.' })
+            sendJson(res, 404, { error: 'No any-cowart canvas snapshot exists.' })
             return
           }
 
@@ -637,9 +657,13 @@ function canvasStoragePlugin() {
         try {
           if (req.method === 'GET') {
             try {
+              const { value: selection, path } = await readJsonFileWithFallback(
+                selectionFile,
+                legacySelectionFile
+              )
               sendJson(res, 200, {
-                selection: await readJsonFile(selectionFile),
-                path: selectionFile
+                selection,
+                path
               })
             } catch (error) {
               if (error.code === 'ENOENT') {
@@ -658,7 +682,7 @@ function canvasStoragePlugin() {
             const body = await readRequestBody(req)
             const selection = JSON.parse(body)
             if (!isSelectionState(selection)) {
-              sendJson(res, 400, { error: 'Expected a Cowart selection state.' })
+              sendJson(res, 400, { error: 'Expected an any-cowart selection state.' })
               return
             }
 
@@ -679,9 +703,13 @@ function canvasStoragePlugin() {
         try {
           if (req.method === 'GET') {
             try {
+              const { value: viewState, path } = await readJsonFileWithFallback(
+                viewStateFile,
+                legacyViewStateFile
+              )
               sendJson(res, 200, {
-                viewState: await readJsonFile(viewStateFile),
-                path: viewStateFile
+                viewState,
+                path
               })
             } catch (error) {
               if (error.code === 'ENOENT') {
@@ -705,7 +733,7 @@ function canvasStoragePlugin() {
             const body = await readRequestBody(req)
             const viewState = JSON.parse(body)
             if (!isViewState(viewState)) {
-              sendJson(res, 400, { error: 'Expected a Cowart view state.' })
+              sendJson(res, 400, { error: 'Expected an any-cowart view state.' })
               return
             }
 
@@ -767,8 +795,10 @@ function canvasStoragePlugin() {
 export default defineConfig({
   plugins: [react(), canvasStoragePlugin()],
   define: {
-    __COWART_WIDGET_BUILD__: JSON.stringify(process.env.COWART_WIDGET_BUILD === '1'),
-    __COWART_APP_VERSION__: JSON.stringify(cowartAppVersion),
+    __ANY_COWART_WIDGET_BUILD__: JSON.stringify(
+      (process.env.ANY_COWART_WIDGET_BUILD ?? process.env.COWART_WIDGET_BUILD) === '1'
+    ),
+    __ANY_COWART_APP_VERSION__: JSON.stringify(anyCowartAppVersion),
     'process.env.NODE_ENV': JSON.stringify('development')
   },
   build: {

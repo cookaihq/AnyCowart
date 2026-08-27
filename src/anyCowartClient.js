@@ -2,24 +2,24 @@ const CANVAS_ENDPOINT = '/api/canvas'
 const SELECTION_ENDPOINT = '/api/selection'
 const VIEW_STATE_ENDPOINT = '/api/view-state'
 
-const TOOL_GET_CANVAS_STATE = 'get_cowart_canvas_state'
-const TOOL_SAVE_CANVAS_STATE = 'save_cowart_canvas_state'
-const TOOL_SAVE_SELECTION_STATE = 'save_cowart_selection_state'
-const TOOL_SAVE_VIEW_STATE = 'save_cowart_view_state'
-const TOOL_SAVE_REFERENCE_IMAGE = 'save_cowart_reference_image'
-const TOOL_READ_PAGE_ASSET = 'read_cowart_page_asset'
-const TOOL_DOWNLOAD_FILE = 'download_cowart_file'
-const TOOL_COPY_IMAGE_TO_CLIPBOARD = 'copy_cowart_image_to_clipboard'
-const TOOL_INSERT_HTML_DRAFT = 'insert_cowart_html_draft'
+const TOOL_GET_CANVAS_STATE = 'get_any_cowart_canvas_state'
+const TOOL_SAVE_CANVAS_STATE = 'save_any_cowart_canvas_state'
+const TOOL_SAVE_SELECTION_STATE = 'save_any_cowart_selection_state'
+const TOOL_SAVE_VIEW_STATE = 'save_any_cowart_view_state'
+const TOOL_SAVE_REFERENCE_IMAGE = 'save_any_cowart_reference_image'
+const TOOL_READ_PAGE_ASSET = 'read_any_cowart_page_asset'
+const TOOL_DOWNLOAD_FILE = 'download_any_cowart_file'
+const TOOL_COPY_IMAGE_TO_CLIPBOARD = 'copy_any_cowart_image_to_clipboard'
+const TOOL_INSERT_HTML_DRAFT = 'insert_any_cowart_html_draft'
 const WIDGET_PAYLOAD_TIMEOUT_MS = 5000
 
-globalThis.__COWART_WIDGET_FETCH_GUARD__ = true
+globalThis.__ANY_COWART_WIDGET_FETCH_GUARD__ = true
 
-export const IS_COWART_WIDGET_BUILD =
-  typeof __COWART_WIDGET_BUILD__ !== 'undefined' && __COWART_WIDGET_BUILD__
+export const IS_ANY_COWART_WIDGET_BUILD =
+  typeof __ANY_COWART_WIDGET_BUILD__ !== 'undefined' && __ANY_COWART_WIDGET_BUILD__
 
-export function hasCowartWidgetBridge() {
-  return Boolean(window.cowartMcp && typeof window.cowartMcp.callServerTool === 'function')
+export function hasAnyCowartWidgetBridge() {
+  return Boolean(window.anyCowartMcp && typeof window.anyCowartMcp.callServerTool === 'function')
 }
 
 function currentWidgetPayload() {
@@ -51,7 +51,7 @@ function abortError() {
 }
 
 async function waitForWidgetPayload(signal) {
-  if (!hasCowartWidgetBridge()) return
+  if (!hasAnyCowartWidgetBridge()) return
   if (hasWidgetStorageTarget()) return
 
   await new Promise((resolve, reject) => {
@@ -62,7 +62,7 @@ async function waitForWidgetPayload(signal) {
 
     const timer = window.setTimeout(() => {
       cleanup()
-      reject(new Error('Cowart widget storage target was not ready. Refusing to read or write without projectDir/canvasDir.'))
+      reject(new Error('any-cowart widget storage target was not ready. Refusing to read or write without projectDir/canvasDir.'))
     }, WIDGET_PAYLOAD_TIMEOUT_MS)
     const cleanup = () => {
       window.clearTimeout(timer)
@@ -86,16 +86,16 @@ async function waitForWidgetPayload(signal) {
   })
 }
 
-async function callCowartServerTool(name, args = {}, options = {}) {
+async function callAnyCowartServerTool(name, args = {}, options = {}) {
   await waitForWidgetPayload(options.signal)
   if (options.signal?.aborted) throw abortError()
-  const result = await window.cowartMcp.callServerTool({
+  const result = await window.anyCowartMcp.callServerTool({
     name,
     arguments: serverToolArgs(args)
   })
   if (result?.isError) {
     const message = result.content?.find((item) => item.type === 'text')?.text
-    throw new Error(message || `Cowart server tool failed: ${name}`)
+    throw new Error(message || `any-cowart server tool failed: ${name}`)
   }
   return result.structuredContent ?? result
 }
@@ -103,14 +103,14 @@ async function callCowartServerTool(name, args = {}, options = {}) {
 async function fetchJson(url, options = {}) {
   const response = await window.fetch(url, options)
   if (!response.ok) {
-    throw new Error(`Cowart request failed: ${response.status} - ${response.statusText}`)
+    throw new Error(`any-cowart request failed: ${response.status} - ${response.statusText}`)
   }
   return response.json()
 }
 
-export async function loadCowartCanvasState(signal) {
-  if (hasCowartWidgetBridge()) {
-    const state = await callCowartServerTool(
+export async function loadAnyCowartCanvasState(signal) {
+  if (hasAnyCowartWidgetBridge()) {
+    const state = await callAnyCowartServerTool(
       TOOL_GET_CANVAS_STATE,
       { hydrateAssets: false },
       { signal }
@@ -135,9 +135,9 @@ export async function loadCowartCanvasState(signal) {
   }
 }
 
-export async function refreshCowartCanvasSnapshot(signal) {
-  if (hasCowartWidgetBridge()) {
-    const state = await callCowartServerTool(
+export async function refreshAnyCowartCanvasSnapshot(signal) {
+  if (hasAnyCowartWidgetBridge()) {
+    const state = await callAnyCowartServerTool(
       TOOL_GET_CANVAS_STATE,
       { hydrateAssets: false },
       { signal }
@@ -149,9 +149,9 @@ export async function refreshCowartCanvasSnapshot(signal) {
   return canvasData.snapshot
 }
 
-export async function saveCowartCanvasSnapshot(snapshot, options = {}) {
-  if (hasCowartWidgetBridge()) {
-    return callCowartServerTool(TOOL_SAVE_CANVAS_STATE, {
+export async function saveAnyCowartCanvasSnapshot(snapshot, options = {}) {
+  if (hasAnyCowartWidgetBridge()) {
+    return callAnyCowartServerTool(TOOL_SAVE_CANVAS_STATE, {
       snapshot,
       protectImageRecords: options.protectImageRecords,
       acknowledgedImageShapeDeletes: options.acknowledgedImageShapeDeletes
@@ -165,9 +165,9 @@ export async function saveCowartCanvasSnapshot(snapshot, options = {}) {
   })
 }
 
-export async function saveCowartSelectionState(selection) {
-  if (hasCowartWidgetBridge()) {
-    return callCowartServerTool(TOOL_SAVE_SELECTION_STATE, { selection })
+export async function saveAnyCowartSelectionState(selection) {
+  if (hasAnyCowartWidgetBridge()) {
+    return callAnyCowartServerTool(TOOL_SAVE_SELECTION_STATE, { selection })
   }
 
   return fetchJson(SELECTION_ENDPOINT, {
@@ -177,9 +177,9 @@ export async function saveCowartSelectionState(selection) {
   })
 }
 
-export async function saveCowartViewState(viewState) {
-  if (hasCowartWidgetBridge()) {
-    return callCowartServerTool(TOOL_SAVE_VIEW_STATE, { viewState })
+export async function saveAnyCowartViewState(viewState) {
+  if (hasAnyCowartWidgetBridge()) {
+    return callAnyCowartServerTool(TOOL_SAVE_VIEW_STATE, { viewState })
   }
 
   return fetchJson(VIEW_STATE_ENDPOINT, {
@@ -189,32 +189,32 @@ export async function saveCowartViewState(viewState) {
   })
 }
 
-export async function saveCowartReferenceImage(reference) {
-  if (!hasCowartWidgetBridge()) {
-    throw new Error('当前 Cowart 画布没有可用的 Codex MCP 文件保存桥。')
+export async function saveAnyCowartReferenceImage(reference) {
+  if (!hasAnyCowartWidgetBridge()) {
+    throw new Error('当前 any-cowart 画布没有可用的 Codex MCP 文件保存桥。')
   }
 
-  return callCowartServerTool(TOOL_SAVE_REFERENCE_IMAGE, reference)
+  return callAnyCowartServerTool(TOOL_SAVE_REFERENCE_IMAGE, reference)
 }
 
-export async function downloadCowartFile(download) {
-  if (!hasCowartWidgetBridge()) {
-    throw new Error('当前 Cowart 画布没有可用的 Codex MCP 文件下载桥。')
+export async function downloadAnyCowartFile(download) {
+  if (!hasAnyCowartWidgetBridge()) {
+    throw new Error('当前 any-cowart 画布没有可用的 Codex MCP 文件下载桥。')
   }
 
-  return callCowartServerTool(TOOL_DOWNLOAD_FILE, download)
+  return callAnyCowartServerTool(TOOL_DOWNLOAD_FILE, download)
 }
 
-export async function copyCowartImageToClipboard(image) {
-  if (!hasCowartWidgetBridge()) {
-    throw new Error('当前 Cowart 画布没有可用的系统剪贴板桥。')
+export async function copyAnyCowartImageToClipboard(image) {
+  if (!hasAnyCowartWidgetBridge()) {
+    throw new Error('当前 any-cowart 画布没有可用的系统剪贴板桥。')
   }
 
-  return callCowartServerTool(TOOL_COPY_IMAGE_TO_CLIPBOARD, image)
+  return callAnyCowartServerTool(TOOL_COPY_IMAGE_TO_CLIPBOARD, image)
 }
 
-export async function updateCowartHtmlDraft({ draftShapeId, htmlContent }) {
-  if (!hasCowartWidgetBridge()) {
+export async function updateAnyCowartHtmlDraft({ draftShapeId, htmlContent }) {
+  if (!hasAnyCowartWidgetBridge()) {
     return fetchJson('/api/html-draft', {
       method: 'PUT',
       headers: { 'content-type': 'application/json' },
@@ -222,17 +222,17 @@ export async function updateCowartHtmlDraft({ draftShapeId, htmlContent }) {
     })
   }
 
-  return callCowartServerTool(TOOL_INSERT_HTML_DRAFT, {
+  return callAnyCowartServerTool(TOOL_INSERT_HTML_DRAFT, {
     draftShapeId,
     htmlContent,
     updateExistingDraft: true
   })
 }
 
-export async function readCowartPageAsset(assetUrl, options = {}) {
-  if (!hasCowartWidgetBridge()) {
-    throw new Error('当前 Cowart 画布没有可用的 Codex MCP 文件读取桥。')
+export async function readAnyCowartPageAsset(assetUrl, options = {}) {
+  if (!hasAnyCowartWidgetBridge()) {
+    throw new Error('当前 any-cowart 画布没有可用的 Codex MCP 文件读取桥。')
   }
 
-  return callCowartServerTool(TOOL_READ_PAGE_ASSET, { assetUrl }, options)
+  return callAnyCowartServerTool(TOOL_READ_PAGE_ASSET, { assetUrl }, options)
 }

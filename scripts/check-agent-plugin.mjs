@@ -71,7 +71,7 @@ for (const [name, server] of Object.entries(mcpConfig.mcpServers)) {
 }
 
 const resolvedRoot = await realpath(rootDir);
-for (const skillName of ["cowart-image-edit", "cowart-image-gen", "cowart-open-canvas"]) {
+for (const skillName of ["any-cowart-image-edit", "any-cowart-image-gen", "any-cowart-open-canvas"]) {
   const skillPath = path.join(rootDir, "skills", skillName, "SKILL.md");
   assert.ok((await lstat(skillPath)).isFile(), `${skillPath} must be a regular file`);
   assert.ok((await realpath(skillPath)).startsWith(`${resolvedRoot}${path.sep}`));
@@ -79,8 +79,14 @@ for (const skillName of ["cowart-image-edit", "cowart-image-gen", "cowart-open-c
   const frontmatter = contents.match(/^---\n([\s\S]*?)\n---/u)?.[1];
   assert.ok(frontmatter, `${skillName} must contain YAML frontmatter`);
   assert.equal(frontmatter.match(/^name:\s*(.+)$/mu)?.[1], skillName);
+  const version = frontmatter.match(/^version:\s*(.+)$/mu)?.[1];
+  assert.equal(version, manifest.version, `${skillName} version must match the plugin version`);
   const description = frontmatter.match(/^description:\s*(.+)$/mu)?.[1];
   assert.ok(description && [...description].length <= 1024);
+  assert.ok(
+    description.startsWith(`v${version}｜`),
+    `${skillName} description must start with v${version}｜`,
+  );
 }
 
-console.log(`Cowart Agent Plugin metadata OK (${manifest.version})`);
+console.log(`any-cowart Agent Plugin metadata OK (${manifest.version})`);

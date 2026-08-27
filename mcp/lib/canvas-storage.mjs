@@ -5,7 +5,14 @@ import { basename, dirname, extname, join, relative, resolve, sep } from "node:p
 const PAGE_ID_PREFIX = "page:";
 const GLOBAL_ASSETS_ROUTE = "/assets/";
 const PAGE_ASSETS_ROUTE = "/page-assets/";
-const CANVAS_FILE_NAME = "cowart-canvas.json";
+const CANVAS_FILE_NAME = "any-cowart-canvas.json";
+const LEGACY_CANVAS_FILE_NAME = "cowart-canvas.json";
+const SELECTION_FILE_NAME = "any-cowart-selection.json";
+const LEGACY_SELECTION_FILE_NAME = "cowart-selection.json";
+const VIEW_STATE_FILE_NAME = "any-cowart-view-state.json";
+const LEGACY_VIEW_STATE_FILE_NAME = "cowart-view-state.json";
+const HTML_DRAFT_URL_ORIGIN = "http://any-cowart.local";
+const LEGACY_HTML_DRAFT_URL_ORIGIN = "http://cowart.local";
 
 const mimeTypes = new Map([
   [".apng", "image/apng"],
@@ -28,11 +35,15 @@ export function pathResolve(value) {
   return resolve(String(value));
 }
 
-export function resolveCowartPaths(args = {}) {
+export function resolveAnyCowartPaths(args = {}) {
   const explicitProjectDir = nonEmptyString(args.projectDir);
   const explicitCanvasDir = nonEmptyString(args.canvasDir);
-  const envProjectDir = nonEmptyString(process.env.COWART_PROJECT_DIR);
-  const envCanvasDir = nonEmptyString(process.env.COWART_CANVAS_DIR);
+  const envProjectDir =
+    nonEmptyString(process.env.ANY_COWART_PROJECT_DIR) ||
+    nonEmptyString(process.env.COWART_PROJECT_DIR);
+  const envCanvasDir =
+    nonEmptyString(process.env.ANY_COWART_CANVAS_DIR) ||
+    nonEmptyString(process.env.COWART_CANVAS_DIR);
 
   const projectDir = pathResolve(explicitProjectDir || envProjectDir || process.cwd());
   const canvasDir = explicitCanvasDir
@@ -45,15 +56,23 @@ export function resolveCowartPaths(args = {}) {
 }
 
 export function resolveCanvasDir(args = {}) {
-  return resolveCowartPaths(args).canvasDir;
+  return resolveAnyCowartPaths(args).canvasDir;
 }
 
 export function resolveSelectionFile(args = {}) {
-  return join(resolveCanvasDir(args), "cowart-selection.json");
+  return join(resolveCanvasDir(args), SELECTION_FILE_NAME);
 }
 
 export function resolveViewStateFile(args = {}) {
-  return join(resolveCanvasDir(args), "cowart-view-state.json");
+  return join(resolveCanvasDir(args), VIEW_STATE_FILE_NAME);
+}
+
+function resolveLegacySelectionFile(args = {}) {
+  return join(resolveCanvasDir(args), LEGACY_SELECTION_FILE_NAME);
+}
+
+function resolveLegacyViewStateFile(args = {}) {
+  return join(resolveCanvasDir(args), LEGACY_VIEW_STATE_FILE_NAME);
 }
 
 export function pageDirName(pageId) {
@@ -66,6 +85,10 @@ export function pageAssetUrl(pageId, fileName) {
 
 function canvasFile(args = {}) {
   return join(resolveCanvasDir(args), CANVAS_FILE_NAME);
+}
+
+function legacyCanvasFile(args = {}) {
+  return join(resolveCanvasDir(args), LEGACY_CANVAS_FILE_NAME);
 }
 
 function canvasPagesDir(args = {}) {
@@ -82,6 +105,10 @@ function pagesManifestFile(args = {}) {
 
 function pageFilePath(args, pageId) {
   return join(canvasPagesDir(args), pageDirName(pageId), CANVAS_FILE_NAME);
+}
+
+function legacyPageFilePath(args, pageId) {
+  return join(canvasPagesDir(args), pageDirName(pageId), LEGACY_CANVAS_FILE_NAME);
 }
 
 function pageAssetsDir(args, pageId) {
@@ -121,6 +148,50 @@ function isSafeChildPath(parent, child) {
 
 function cloneJson(value) {
   return value == null ? value : JSON.parse(JSON.stringify(value));
+}
+
+function migrateLegacyAnyCowartMetadata(snapshot) {
+  if (!isCanvasSnapshot(snapshot)) return snapshot;
+  let migratedSnapshot = snapshot;
+
+  for (const [id, record] of Object.entries(snapshot.store)) {
+    if (!record || typeof record !== "object") continue;
+    let nextRecord = record;
+    const legacyMetaEntries = Object.entries(record.meta || {}).filter(([key]) =>
+      key.startsWith("cowart"),
+    );
+    if (legacyMetaEntries.length > 0) {
+      const meta = { ...record.meta };
+      for (const [key, value] of legacyMetaEntries) {
+        const newKey = `anyCowart${key.slice("cowart".length)}`;
+        if (!(newKey in meta)) meta[newKey] = value;
+        delete meta[key];
+      }
+      nextRecord = { ...nextRecord, meta };
+    }
+
+    if (
+      typeof nextRecord.props?.url === "string" &&
+      nextRecord.props.url.startsWith(LEGACY_HTML_DRAFT_URL_ORIGIN)
+    ) {
+      nextRecord = {
+        ...nextRecord,
+        props: {
+          ...nextRecord.props,
+          url: `${HTML_DRAFT_URL_ORIGIN}${nextRecord.props.url.slice(LEGACY_HTML_DRAFT_URL_ORIGIN.length)}`,
+        },
+      };
+    }
+
+    if (nextRecord !== record) {
+      if (migratedSnapshot === snapshot) {
+        migratedSnapshot = { ...snapshot, store: { ...snapshot.store } };
+      }
+      migratedSnapshot.store[id] = nextRecord;
+    }
+  }
+
+  return migratedSnapshot;
 }
 
 function defaultViewState() {
@@ -401,6 +472,15 @@ async function readJsonFile(filePath) {
   return JSON.parse(await readFile(filePath, "utf8"));
 }
 
+async function readJsonFileWithFallback(primaryPath, legacyPath) {
+  try {
+    return { value: await readJsonFile(primaryPath), path: primaryPath };
+  } catch (error) {
+    if (error?.code !== "ENOENT") throw error;
+  }
+  return { value: await readJsonFile(legacyPath), path: legacyPath };
+}
+
 async function readPageSnapshots(args = {}) {
   let manifest = null;
   try {
@@ -412,8 +492,10 @@ async function readPageSnapshots(args = {}) {
     if (!Array.isArray(manifest.pages)) throw new Error(`Invalid pages manifest in ${pagesManifestFile(args)}`);
     const snapshots = [];
     for (const page of manifest.pages) {
-      const filePath = pageFilePath(args, page.id);
-      const snapshot = await readJsonFile(filePath);
+      const { value: snapshot, path: filePath } = await readJsonFileWithFallback(
+        pageFilePath(args, page.id),
+        legacyPageFilePath(args, page.id),
+      );
       if (!isCanvasSnapshot(snapshot)) {
         throw new Error(`Invalid canvas snapshot in ${filePath}`);
       }
@@ -433,9 +515,11 @@ async function readPageSnapshots(args = {}) {
   const snapshots = [];
   for (const entry of entries) {
     if (!entry.isDirectory()) continue;
-    const filePath = join(canvasPagesDir(args), entry.name, CANVAS_FILE_NAME);
     try {
-      const snapshot = await readJsonFile(filePath);
+      const { value: snapshot, path: filePath } = await readJsonFileWithFallback(
+        join(canvasPagesDir(args), entry.name, CANVAS_FILE_NAME),
+        join(canvasPagesDir(args), entry.name, LEGACY_CANVAS_FILE_NAME),
+      );
       if (isCanvasSnapshot(snapshot)) snapshots.push({ filePath, snapshot });
     } catch (error) {
       if (error.code !== "ENOENT") throw error;
@@ -457,16 +541,20 @@ async function loadStoredCanvasSnapshot(args = {}) {
       Object.assign(mergedSnapshot.store, snapshot.store);
     }
     return {
-      snapshot: mergedSnapshot,
+      snapshot: migrateLegacyAnyCowartMetadata(mergedSnapshot),
       path: canvasPagesDir(args),
       storage: "per-page",
     };
   }
 
   try {
+    const { value: snapshot, path } = await readJsonFileWithFallback(
+      canvasFile(args),
+      legacyCanvasFile(args),
+    );
     return {
-      snapshot: await readJsonFile(canvasFile(args)),
-      path: canvasFile(args),
+      snapshot: migrateLegacyAnyCowartMetadata(snapshot),
+      path,
       storage: "legacy-single-file",
     };
   } catch (error) {
@@ -508,7 +596,7 @@ async function saveStoredCanvasSnapshot(args, snapshot) {
 
   const manifest = {
     version: 1,
-    source: "cowart",
+    source: "any-cowart",
     pages: pages.map((page) => ({
       id: page.id,
       name: page.name,
@@ -556,9 +644,9 @@ async function hydrateSnapshotAssets(args, snapshot) {
   return { snapshot: hydrated, hydratedAssets };
 }
 
-export async function writeCowartPageAsset(args = {}, options = {}) {
+export async function writeAnyCowartPageAsset(args = {}, options = {}) {
   const pageId = nonEmptyString(options.pageId);
-  if (!pageId) throw new Error("pageId is required to save a Cowart page asset.");
+  if (!pageId) throw new Error("pageId is required to save an any-cowart page asset.");
 
   const dataUrl = nonEmptyString(options.dataUrl);
   const dataBase64 = nonEmptyString(options.dataBase64);
@@ -577,13 +665,13 @@ export async function writeCowartPageAsset(args = {}, options = {}) {
 
   const mimeType = nonEmptyString(options.mimeType) || parsed.mimeType || "application/octet-stream";
   if (!mimeType.startsWith("image/")) {
-    throw new Error(`Cowart page assets only accept image payloads. Received ${mimeType}.`);
+    throw new Error(`any-cowart page assets only accept image payloads. Received ${mimeType}.`);
   }
 
   const canvasDir = resolveCanvasDir(args);
   const destinationDir = pageAssetsDir(args, pageId);
   if (!isSafeChildPath(canvasDir, destinationDir)) {
-    throw new Error(`Unsafe Cowart page assets directory: ${destinationDir}`);
+    throw new Error(`Unsafe any-cowart page assets directory: ${destinationDir}`);
   }
 
   const requestedName = sanitizeAssetFileName(
@@ -607,22 +695,22 @@ export async function writeCowartPageAsset(args = {}, options = {}) {
   };
 }
 
-export async function readCowartPageAsset(args = {}, options = {}) {
+export async function readAnyCowartPageAsset(args = {}, options = {}) {
   const assetUrl = nonEmptyString(options.assetUrl);
-  if (!assetUrl) throw new Error("assetUrl is required to read a Cowart page asset.");
+  if (!assetUrl) throw new Error("assetUrl is required to read an any-cowart page asset.");
   if (!assetUrl.startsWith(PAGE_ASSETS_ROUTE) && !assetUrl.startsWith(GLOBAL_ASSETS_ROUTE)) {
-    throw new Error(`Unsupported Cowart asset URL: ${assetUrl}`);
+    throw new Error(`Unsupported any-cowart asset URL: ${assetUrl}`);
   }
 
   const filePath = localAssetFilePathFromUrl(assetUrl, args);
-  if (!filePath) throw new Error(`Unsafe Cowart asset URL: ${assetUrl}`);
+  if (!filePath) throw new Error(`Unsafe any-cowart asset URL: ${assetUrl}`);
 
   const fileStat = await stat(filePath);
-  if (!fileStat.isFile()) throw new Error(`Cowart asset is not a file: ${assetUrl}`);
+  if (!fileStat.isFile()) throw new Error(`any-cowart asset is not a file: ${assetUrl}`);
 
   const mimeType = mimeTypes.get(extname(filePath).toLowerCase()) || "application/octet-stream";
   if (!mimeType.startsWith("image/") && mimeType !== "text/html") {
-    throw new Error(`Cowart page assets only expose image or HTML payloads. Received ${mimeType}.`);
+    throw new Error(`any-cowart page assets only expose image or HTML payloads. Received ${mimeType}.`);
   }
 
   const buffer = await readFile(filePath);
@@ -637,13 +725,13 @@ export async function readCowartPageAsset(args = {}, options = {}) {
   };
 }
 
-export async function readCowartCanvasState(args = {}, { hydrateAssets = false } = {}) {
-  const { projectDir, canvasDir } = resolveCowartPaths(args);
+export async function readAnyCowartCanvasState(args = {}, { hydrateAssets = false } = {}) {
+  const { projectDir, canvasDir } = resolveAnyCowartPaths(args);
   const loaded = await loadStoredCanvasSnapshot(args);
   const hydrated = hydrateAssets
     ? await hydrateSnapshotAssets(args, loaded.snapshot)
     : { snapshot: loaded.snapshot, hydratedAssets: [] };
-  const { viewState, viewStateFile } = await readCowartViewState(args);
+  const { viewState, viewStateFile } = await readAnyCowartViewState(args);
 
   return {
     version: 1,
@@ -659,7 +747,7 @@ export async function readCowartCanvasState(args = {}, { hydrateAssets = false }
   };
 }
 
-export async function saveCowartCanvasSnapshot(args = {}, snapshot) {
+export async function saveAnyCowartCanvasSnapshot(args = {}, snapshot) {
   const { sanitizeCanvasSnapshotForTldraw } = await import("../../src/canvasSnapshot.js");
   const sanitized = sanitizeCanvasSnapshotForTldraw(snapshot);
   if (!sanitized.snapshot) {
@@ -680,7 +768,7 @@ export async function saveCowartCanvasSnapshot(args = {}, snapshot) {
       paths: [],
       skippedRecords: sanitized.skippedRecords,
       blockedImageLosses: imageLosses,
-      message: `Cowart refused to save because ${imageLosses.length} existing image shape(s) disappeared without a user delete confirmation.`,
+      message: `any-cowart refused to save because ${imageLosses.length} existing image shape(s) disappeared without a user delete confirmation.`,
     };
   }
 
@@ -692,14 +780,17 @@ export async function saveCowartCanvasSnapshot(args = {}, snapshot) {
   };
 }
 
-export async function readCowartSelectionState(args = {}) {
+export async function readAnyCowartSelectionState(args = {}) {
   const selectionFile = resolveSelectionFile(args);
   try {
-    const selection = await readJsonFile(selectionFile);
+    const { value: selection, path } = await readJsonFileWithFallback(
+      selectionFile,
+      resolveLegacySelectionFile(args),
+    );
     if (!isSelectionState(selection)) {
-      throw new Error(`Invalid selection state in ${selectionFile}`);
+      throw new Error(`Invalid selection state in ${path}`);
     }
-    return { selection, selectionFile };
+    return { selection, selectionFile: path };
   } catch (error) {
     if (error?.code === "ENOENT") {
       return {
@@ -711,9 +802,9 @@ export async function readCowartSelectionState(args = {}) {
   }
 }
 
-export async function writeCowartSelectionState(args = {}, selection) {
+export async function writeAnyCowartSelectionState(args = {}, selection) {
   if (!isSelectionState(selection)) {
-    throw new Error("Expected a Cowart selection state.");
+    throw new Error("Expected an any-cowart selection state.");
   }
   const selectionFile = resolveSelectionFile(args);
   const payload = {
@@ -724,11 +815,17 @@ export async function writeCowartSelectionState(args = {}, selection) {
   return { ok: true, path: selectionFile, selection: payload };
 }
 
-export async function readCowartViewState(args = {}) {
+export async function readAnyCowartViewState(args = {}) {
   const viewStateFile = resolveViewStateFile(args);
   try {
-    const viewState = await readJsonFile(viewStateFile);
-    return { viewState: isViewState(viewState) ? viewState : defaultViewState(), viewStateFile };
+    const { value: viewState, path } = await readJsonFileWithFallback(
+      viewStateFile,
+      resolveLegacyViewStateFile(args),
+    );
+    return {
+      viewState: isViewState(viewState) ? viewState : defaultViewState(),
+      viewStateFile: path,
+    };
   } catch (error) {
     if (error?.code === "ENOENT") {
       return { viewState: defaultViewState(), viewStateFile };
@@ -737,9 +834,9 @@ export async function readCowartViewState(args = {}) {
   }
 }
 
-export async function writeCowartViewState(args = {}, viewState) {
+export async function writeAnyCowartViewState(args = {}, viewState) {
   if (!isViewState(viewState)) {
-    throw new Error("Expected a Cowart view state.");
+    throw new Error("Expected an any-cowart view state.");
   }
   const viewStateFile = resolveViewStateFile(args);
   const payload = {

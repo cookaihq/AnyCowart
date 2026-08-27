@@ -1,0 +1,7 @@
+interface:
+  display_name: "any-cowart Image Gen"
+  short_description: "Replace a selected any-cowart AI holder with a generated image"
+  default_prompt: "Use $any-cowart:any-cowart-image-gen to replace the selected any-cowart AI image holder with a generated image."
+
+policy:
+  allow_implicit_invocation: true

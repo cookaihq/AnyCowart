@@ -1,14 +1,14 @@
 {
-  "name": "cowart",
-  "version": "0.1.27",
-  "description": "A native tldraw canvas for Codex, backed by cowart_mcp. Use render_cowart_canvas_widget to open, reopen, or explicitly refresh the canvas, and reuse an existing widget for Cowart workflows.",
+  "name": "any-cowart",
+  "version": "1.0.0",
+  "description": "A native tldraw canvas for Codex, backed by any_cowart_mcp. Use render_any_cowart_canvas_widget to open, reopen, or explicitly refresh the canvas, and reuse an existing widget for any-cowart workflows.",
   "author": {
-    "name": "ZHONG XIN",
-    "email": "zhongxin123456@gmail.com",
-    "url": "https://www.jiqiren.ai"
+    "name": "cookaihq",
+    "email": "263483889+cookaihq@users.noreply.github.com",
+    "url": "https://github.com/cookaihq"
   },
-  "homepage": "https://www.jiqiren.ai",
-  "repository": "https://github.com/zhongerxin/Cowart",
+  "homepage": "https://github.com/cookaihq/AnyCowart",
+  "repository": "https://github.com/cookaihq/AnyCowart",
   "license": "MIT",
   "keywords": [
     "canvas",
@@ -20,12 +20,12 @@
   "skills": "./skills/",
   "mcpServers": "./.mcp.json",
   "interface": {
-    "displayName": "Cowart",
-    "shortDescription": "Open a native tldraw canvas and reuse it across Cowart workflows.",
-    "longDescription": "Cowart brings a tldraw-powered native widget canvas into Codex for visual planning and creative iteration. The cowart_mcp server provides the canvas and project-backed state tools; render_cowart_canvas_widget opens, reopens, or explicitly refreshes the native canvas. Once the widget is open, image generation, annotation editing, HTML, Slides, and other Cowart workflows should reuse it and let MCP-backed storage synchronization update the canvas without rendering another widget tab.",
-    "developerName": "ZHONG XIN",
+    "displayName": "any-cowart",
+    "shortDescription": "Open a native tldraw canvas and reuse it across any-cowart workflows.",
+    "longDescription": "any-cowart brings a tldraw-powered native widget canvas into Codex for visual planning and creative iteration. The any_cowart_mcp server provides the canvas and project-backed state tools; render_any_cowart_canvas_widget opens, reopens, or explicitly refreshes the native canvas. Once the widget is open, image generation, annotation editing, HTML, Slides, and other any-cowart workflows should reuse it and let MCP-backed storage synchronization update the canvas without rendering another widget tab.",
+    "developerName": "cookaihq",
     "category": "Productivity",
-    "websiteURL": "https://www.jiqiren.ai",
+    "websiteURL": "https://github.com/cookaihq/AnyCowart",
     "brandColor": "#25BFEF",
     "logo": "./assets/app-icon.png",
     "composerIcon": "./assets/app-icon.png",
@@ -37,9 +37,9 @@
       "Project-local persistence"
     ],
     "defaultPrompt": [
-      "Open the Cowart canvas for this project.",
-      "Use my Cowart annotation screenshot to generate a clean revised image beside the original.",
-      "Generate a new image into the selected Cowart AI image holder."
+      "Open the any-cowart canvas for this project.",
+      "Use my any-cowart annotation screenshot to generate a clean revised image beside the original.",
+      "Generate a new image into the selected any-cowart AI image holder."
     ]
   }
 }

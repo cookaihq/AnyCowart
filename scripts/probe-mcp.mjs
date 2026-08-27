@@ -11,7 +11,7 @@ const transportEnvironment = Object.fromEntries(
 );
 const serverRoot = path.resolve(optionValue("--server-root") || process.cwd());
 const maximumStartupMs = Number(optionValue("--max-startup-ms") || 0);
-transportEnvironment.COWART_PLUGIN_ROOT = serverRoot;
+transportEnvironment.ANY_COWART_PLUGIN_ROOT = serverRoot;
 const transport = new StdioClientTransport({
   command: "node",
   args: ["./scripts/start-mcp.mjs"],
@@ -20,7 +20,7 @@ const transport = new StdioClientTransport({
 });
 
 const client = new Client({
-  name: "cowart-probe",
+  name: "any-cowart-probe",
   version: "0.1.0",
 });
 const toolsOnly = process.argv.includes("--tools-only");
@@ -46,24 +46,23 @@ try {
   const startupMs = performance.now() - startupStartedAt;
   if (maximumStartupMs > 0 && startupMs > maximumStartupMs) {
     throw new Error(
-      `Cowart MCP tool discovery took ${Math.round(startupMs)} ms; expected at most ${maximumStartupMs} ms.`,
+      `any-cowart MCP tool discovery took ${Math.round(startupMs)} ms; expected at most ${maximumStartupMs} ms.`,
     );
   }
   const toolNames = tools.tools.map((tool) => tool.name);
   const requiredTools = [
-    "render_cowart_canvas_widget",
-    "get_cowart_canvas_state",
-    "save_cowart_canvas_state",
-    "save_cowart_selection_state",
-    "save_cowart_view_state",
-    "save_cowart_reference_image",
-    "read_cowart_page_asset",
-    "download_cowart_file",
-    "copy_cowart_image_to_clipboard",
-    "get_cowart_selection",
-    "insert_cowart_image",
-    "insert_cowart_html_draft",
-    "track_cowart_analytics_event",
+    "render_any_cowart_canvas_widget",
+    "get_any_cowart_canvas_state",
+    "save_any_cowart_canvas_state",
+    "save_any_cowart_selection_state",
+    "save_any_cowart_view_state",
+    "save_any_cowart_reference_image",
+    "read_any_cowart_page_asset",
+    "download_any_cowart_file",
+    "copy_any_cowart_image_to_clipboard",
+    "get_any_cowart_selection",
+    "insert_any_cowart_image",
+    "insert_any_cowart_html_draft",
   ];
 
   for (const toolName of requiredTools) {
@@ -72,56 +71,52 @@ try {
     }
   }
 
-  const analyticsTool = tools.tools.find((tool) => tool.name === "track_cowart_analytics_event");
-  if (JSON.stringify(analyticsTool?._meta?.ui?.visibility) !== JSON.stringify(["app"])) {
-    throw new Error("Cowart analytics tool should only be visible to the widget app.");
+  if (toolNames.some((name) => name.includes("analytics"))) {
+    throw new Error(`any-cowart must not expose analytics tools. Tools: ${toolNames.join(", ")}`);
   }
-  if (analyticsTool?.annotations?.openWorldHint !== true) {
-    throw new Error("Cowart analytics tool should declare its external GA4 side effect.");
-  }
-  const clipboardTool = tools.tools.find((tool) => tool.name === "copy_cowart_image_to_clipboard");
+  const clipboardTool = tools.tools.find((tool) => tool.name === "copy_any_cowart_image_to_clipboard");
   if (JSON.stringify(clipboardTool?._meta?.ui?.visibility) !== JSON.stringify(["app"])) {
-    throw new Error("Cowart clipboard tool should only be visible to the widget app.");
+    throw new Error("any-cowart clipboard tool should only be visible to the widget app.");
   }
 
-  projectDir = await mkdtemp(path.join(tmpdir(), "cowart-widget-probe-"));
+  projectDir = await mkdtemp(path.join(tmpdir(), "any-cowart-widget-probe-"));
   const renderResult = await client.callTool({
-    name: "render_cowart_canvas_widget",
+    name: "render_any_cowart_canvas_widget",
     arguments: {
       projectDir,
-      title: "Probe Cowart",
+      title: "Probe any-cowart",
     },
   });
-  if (renderResult._meta?.["openai/outputTemplate"] !== "ui://widget/cowart/canvas.html") {
-    throw new Error("Cowart render tool result did not include the expected outputTemplate.");
+  if (renderResult._meta?.["openai/outputTemplate"] !== "ui://widget/any-cowart/canvas.html") {
+    throw new Error("any-cowart render tool result did not include the expected outputTemplate.");
   }
   if (renderResult.structuredContent?.preferredDisplayMode !== "fullscreen") {
-    throw new Error("Cowart render tool did not default to fullscreen display mode.");
+    throw new Error("any-cowart render tool did not default to fullscreen display mode.");
   }
   if (renderResult.structuredContent?.projectDir !== projectDir) {
-    throw new Error("Cowart render tool did not preserve the requested projectDir.");
+    throw new Error("any-cowart render tool did not preserve the requested projectDir.");
   }
   if (toolsOnly) {
     console.log(
-      `OK: Cowart MCP tools are available before the widget resource is built (${Math.round(startupMs)} ms).`,
+      `OK: any-cowart MCP tools are available before the widget resource is built (${Math.round(startupMs)} ms).`,
     );
     break probe;
   }
 
   const stateResult = await client.callTool({
-    name: "get_cowart_canvas_state",
+    name: "get_any_cowart_canvas_state",
     arguments: {
       projectDir,
     },
   });
   if (stateResult.structuredContent?.storage !== "empty") {
-    throw new Error("A fresh Cowart project should report empty storage.");
+    throw new Error("A fresh any-cowart project should report empty storage.");
   }
   if (!isCanvasDirectory(stateResult.structuredContent?.canvasDir)) {
-    throw new Error("Cowart canvas state did not report a project-local canvas directory.");
+    throw new Error("any-cowart canvas state did not report a project-local canvas directory.");
   }
   if ((stateResult.structuredContent?.hydratedAssets || []).length !== 0) {
-    throw new Error("Cowart canvas state should not hydrate image assets by default.");
+    throw new Error("any-cowart canvas state should not hydrate image assets by default.");
   }
 
   const probePageAssetDir = path.join(projectDir, "canvas", "pages", "probe-page", "assets");
@@ -132,28 +127,28 @@ try {
   );
   await writeFile(path.join(probePageAssetDir, "draft.html"), "<!doctype html><html><body>draft</body></html>");
   const pageAssetResult = await client.callTool({
-    name: "read_cowart_page_asset",
+    name: "read_any_cowart_page_asset",
     arguments: {
       projectDir,
       assetUrl: "/page-assets/probe-page/tiny.png",
     },
   });
   if (pageAssetResult.structuredContent?.mimeType !== "image/png" || !pageAssetResult.structuredContent?.dataBase64) {
-    throw new Error("Cowart page asset tool did not return the expected png payload.");
+    throw new Error("any-cowart page asset tool did not return the expected png payload.");
   }
   const htmlAssetResult = await client.callTool({
-    name: "read_cowart_page_asset",
+    name: "read_any_cowart_page_asset",
     arguments: {
       projectDir,
       assetUrl: "/page-assets/probe-page/draft.html",
     },
   });
   if (htmlAssetResult.structuredContent?.mimeType !== "text/html" || !htmlAssetResult.structuredContent?.dataBase64) {
-    throw new Error("Cowart page asset tool did not return the expected html payload.");
+    throw new Error("any-cowart page asset tool did not return the expected html payload.");
   }
 
   const clipboardResult = await client.callTool({
-    name: "copy_cowart_image_to_clipboard",
+    name: "copy_any_cowart_image_to_clipboard",
     arguments: {
       projectDir,
       dataBase64: pageAssetResult.structuredContent.dataBase64,
@@ -166,28 +161,28 @@ try {
     clipboardResult.structuredContent?.width !== 1 ||
     clipboardResult.structuredContent?.height !== 1
   ) {
-    throw new Error("Cowart clipboard tool did not validate the expected PNG payload.");
+    throw new Error("any-cowart clipboard tool did not validate the expected PNG payload.");
   }
 
   const downloadResult = await client.callTool({
-    name: "download_cowart_file",
+    name: "download_any_cowart_file",
     arguments: {
       projectDir,
       assetUrl: "/page-assets/probe-page/tiny.png",
-      fileName: `cowart-download-probe-${process.pid}.png`,
+      fileName: `any-cowart-download-probe-${process.pid}.png`,
     },
   });
   downloadedProbePath = downloadResult.structuredContent?.filePath;
   if (!downloadedProbePath || !(await readFile(downloadedProbePath)).length) {
-    throw new Error("Cowart download tool did not write the expected file into Downloads.");
+    throw new Error("any-cowart download tool did not write the expected file into Downloads.");
   }
 
   const folderDownloadResult = await client.callTool({
-    name: "download_cowart_file",
+    name: "download_any_cowart_file",
     arguments: {
       projectDir,
       dataUrl: "data:text/html;charset=utf-8,%3C!doctype%20html%3E%3Ctitle%3Eprobe%3C%2Ftitle%3E",
-      directoryName: `Cowart Slides Probe ${process.pid}`,
+      directoryName: `any-cowart Slides Probe ${process.pid}`,
       subdirectory: "pages",
       fileName: "page-01.html",
       mimeType: "text/html",
@@ -202,76 +197,49 @@ try {
     path.basename(path.dirname(folderDownloadPath || "")) !== "pages" ||
     !(await readFile(folderDownloadPath, "utf8")).includes("<title>probe</title>")
   ) {
-    throw new Error("Cowart download tool did not create the expected Slides export folder structure.");
+    throw new Error("any-cowart download tool did not create the expected Slides export folder structure.");
   }
 
   const resource = await client.readResource({
-    uri: "ui://widget/cowart/canvas.html",
+    uri: "ui://widget/any-cowart/canvas.html",
   });
   const resourceMeta = resource.contents?.[0]?._meta || {};
   const widgetCsp = resourceMeta["openai/widgetCSP"] || {};
   const connectDomains = widgetCsp.connect_domains || [];
-  const requiredAnalyticsConnectDomains = [
-    "https://www.google-analytics.com",
-    "https://region1.google-analytics.com",
-    "https://analytics.google.com",
-    "https://www.googletagmanager.com",
-    "https://stats.g.doubleclick.net",
-    "https://www.doubleclick.net",
-    "https://pagead2.googlesyndication.com",
-    "https://www.googleadservices.com",
-    "https://www.google.com",
-    "https://www.google.cn",
-    "https://www.gstatic.com",
-    "https://www.googleapis.com",
-    "https://*.google-analytics.com",
-    "https://*.analytics.google.com",
-    "https://*.googletagmanager.com",
-    "https://*.doubleclick.net",
-    "https://*.googlesyndication.com",
-    "https://*.googleadservices.com",
-    "https://*.google.com",
-    "https://*.google.cn",
-    "https://*.gstatic.com",
-    "https://*.googleapis.com",
-    "https://*.merchant-center-analytics.goog",
-  ];
-  for (const domain of requiredAnalyticsConnectDomains) {
-    if (!connectDomains.includes(domain)) {
-      throw new Error(`Cowart widget CSP should allow Google Analytics connections to ${domain}.`);
-    }
+  if (connectDomains.length !== 0) {
+    throw new Error(`any-cowart widget CSP should not allow external connections. Found: ${connectDomains.join(", ")}`);
   }
   const resourceDomains = widgetCsp.resource_domains || [];
   if (!resourceDomains.includes("data:") || !resourceDomains.includes("blob:")) {
-    throw new Error(`Cowart widget CSP should allow local data/blob resources. Found: ${resourceDomains.join(", ")}`);
+    throw new Error(`any-cowart widget CSP should allow local data/blob resources. Found: ${resourceDomains.join(", ")}`);
   }
-  const requiredAnalyticsResourceDomains = requiredAnalyticsConnectDomains;
-  for (const domain of requiredAnalyticsResourceDomains) {
-    if (!resourceDomains.includes(domain)) {
-      throw new Error(`Cowart widget CSP should allow Google Analytics resources from ${domain}.`);
-    }
+  if (resourceDomains.some((domain) => /^https?:/i.test(domain))) {
+    throw new Error(`any-cowart widget CSP should not allow external resources. Found: ${resourceDomains.join(", ")}`);
   }
   const frameDomains = widgetCsp.frame_domains || [];
   if (!frameDomains.includes("data:") || !frameDomains.includes("blob:")) {
-    throw new Error(`Cowart widget CSP should allow local data/blob iframes for HTML drafts. Found: ${frameDomains.join(", ")}`);
+    throw new Error(`any-cowart widget CSP should allow local data/blob iframes for HTML drafts. Found: ${frameDomains.join(", ")}`);
+  }
+  if (frameDomains.some((domain) => /^https?:/i.test(domain))) {
+    throw new Error(`any-cowart widget CSP should not allow external frames. Found: ${frameDomains.join(", ")}`);
   }
 
   const widgetHtml = resource.contents?.[0]?.text || "";
-  if (!widgetHtml.includes("window.cowartMcp") || !widgetHtml.includes("Cowart Canvas")) {
-    throw new Error("Cowart widget HTML does not include the expected bridge and app shell.");
+  if (!widgetHtml.includes("window.anyCowartMcp") || !widgetHtml.includes("any-cowart Canvas")) {
+    throw new Error("any-cowart widget HTML does not include the expected bridge and app shell.");
   }
   if (/<script\b[^>]*\btype="module"/i.test(widgetHtml)) {
-    throw new Error("Cowart widget HTML should use classic inline scripts for host compatibility.");
+    throw new Error("any-cowart widget HTML should use classic inline scripts for host compatibility.");
   }
   const shellMarkup = widgetHtml
     .replace(/<script\b[\s\S]*?<\/script>/gi, "")
     .replace(/<style\b[\s\S]*?<\/style>/gi, "");
   if (/<iframe\b/i.test(shellMarkup) || /<script\b[^>]+\bsrc=/i.test(shellMarkup) || /<link\b[^>]+\bhref=/i.test(shellMarkup)) {
-    throw new Error("Cowart widget HTML should be direct static markup without iframe or external asset tags.");
+    throw new Error("any-cowart widget HTML should be direct static markup without iframe or external asset tags.");
   }
 
   console.log(
-    `OK: Cowart MCP tools and native widget resource are available (${Math.round(startupMs)} ms startup).`,
+    `OK: any-cowart MCP tools and native widget resource are available (${Math.round(startupMs)} ms startup).`,
   );
   }
 } finally {

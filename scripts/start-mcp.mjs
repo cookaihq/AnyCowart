@@ -5,8 +5,8 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const GENERATED_DIR = path.join(ROOT_DIR, "mcp", "generated");
 const RELEASE_MANIFEST_PATH = path.join(GENERATED_DIR, "release-manifest.json");
-const MCP_BUNDLE_PATH = path.join(GENERATED_DIR, "cowart-mcp.mjs");
-const WIDGET_ARTIFACT_PATH = path.join(GENERATED_DIR, "cowart-widget.html");
+const MCP_BUNDLE_PATH = path.join(GENERATED_DIR, "any-cowart-mcp.mjs");
+const WIDGET_ARTIFACT_PATH = path.join(GENERATED_DIR, "any-cowart-widget.html");
 
 for (const artifactPath of [
   RELEASE_MANIFEST_PATH,
@@ -15,7 +15,7 @@ for (const artifactPath of [
 ]) {
   if (!existsSync(artifactPath)) {
     throw new Error(
-      `Missing Cowart release artifact: ${artifactPath}. Run npm run build:artifacts before publishing the plugin.`,
+      `Missing any-cowart release artifact: ${artifactPath}. Run npm run build:artifacts before publishing the plugin.`,
     );
   }
 }
@@ -26,10 +26,10 @@ const packageVersion = JSON.parse(
 const releaseManifest = JSON.parse(readFileSync(RELEASE_MANIFEST_PATH, "utf8"));
 if (releaseManifest.version !== packageVersion) {
   throw new Error(
-    `Cowart release artifacts are for ${releaseManifest.version}, but package.json is ${packageVersion}. Run npm run build:artifacts.`,
+    `any-cowart release artifacts are for ${releaseManifest.version}, but package.json is ${packageVersion}. Run npm run build:artifacts.`,
   );
 }
 
-process.env.COWART_PLUGIN_ROOT ||= ROOT_DIR;
+process.env.ANY_COWART_PLUGIN_ROOT ||= ROOT_DIR;
 process.chdir(ROOT_DIR);
 await import(pathToFileURL(MCP_BUNDLE_PATH).href);

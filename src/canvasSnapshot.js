@@ -73,6 +73,38 @@ function normalizeImageShapeRecord(record) {
   }
 }
 
+function normalizeLegacyAnyCowartRecord(record) {
+  if (!record || typeof record !== 'object') return record
+  let normalized = record
+  const legacyMetaEntries = Object.entries(record.meta || {}).filter(([key]) =>
+    key.startsWith('cowart')
+  )
+  if (legacyMetaEntries.length > 0) {
+    const meta = { ...record.meta }
+    for (const [key, value] of legacyMetaEntries) {
+      const newKey = `anyCowart${key.slice('cowart'.length)}`
+      if (!(newKey in meta)) meta[newKey] = value
+      delete meta[key]
+    }
+    normalized = { ...normalized, meta }
+  }
+
+  if (
+    typeof normalized.props?.url === 'string' &&
+    normalized.props.url.startsWith('http://cowart.local')
+  ) {
+    normalized = {
+      ...normalized,
+      props: {
+        ...normalized.props,
+        url: `http://any-cowart.local${normalized.props.url.slice('http://cowart.local'.length)}`
+      }
+    }
+  }
+
+  return normalized
+}
+
 export function sanitizeCanvasSnapshotForTldraw(snapshot) {
   if (!isCanvasSnapshot(snapshot)) {
     return { snapshot: null, skippedRecords: [] }
@@ -100,7 +132,7 @@ export function sanitizeCanvasSnapshotForTldraw(snapshot) {
 
   const validStore = {}
   for (const record of Object.values(migratedSnapshot.store)) {
-    const normalizedRecord = normalizeImageShapeRecord(record)
+    const normalizedRecord = normalizeImageShapeRecord(normalizeLegacyAnyCowartRecord(record))
     try {
       validationStore.put([normalizedRecord], 'initialize')
       validStore[normalizedRecord.id] = validationStore.get(normalizedRecord.id)

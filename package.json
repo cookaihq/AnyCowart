@@ -1,11 +1,11 @@
 {
-  "name": "cowart-canvas",
-  "version": "0.1.27",
+  "name": "any-cowart-canvas",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "check:plugin": "node ./scripts/check-plugin-metadata.mjs && node ./scripts/check-agent-plugin.mjs",
-    "check": "node --check ./mcp/server.mjs && node --check ./mcp/lib/plugin-root.mjs && node --check ./mcp/lib/widget-resource.mjs && node --check ./mcp/lib/cowart-static-widget.mjs && node --check ./mcp/lib/canvas-storage.mjs && node --check ./mcp/lib/ga4-analytics.mjs && node --check ./src/analytics.js && node --check ./scripts/build-release-artifacts.mjs && node --check ./scripts/probe-cold-install.mjs && node --check ./scripts/probe-analytics.mjs && node --check ./scripts/probe-ga4.mjs && node --check ./scripts/probe-mcp.mjs && node --check ./scripts/start-mcp.mjs && node --check ./scripts/vite-build-once.mjs && node --check ./mcp/generated/cowart-mcp.mjs",
+    "check": "node --check ./mcp/server.mjs && node --check ./mcp/lib/plugin-root.mjs && node --check ./mcp/lib/widget-resource.mjs && node --check ./mcp/lib/any-cowart-static-widget.mjs && node --check ./mcp/lib/canvas-storage.mjs && node --check ./scripts/build-release-artifacts.mjs && node --check ./scripts/probe-codex-image-workflows.mjs && node --check ./scripts/probe-cold-install.mjs && node --check ./scripts/probe-mcp.mjs && node --check ./scripts/probe-storage-migration.mjs && node --check ./scripts/start-mcp.mjs && node --check ./scripts/vite-build-once.mjs && node --check ./vendor/codex-image/scripts/generate-image.mjs && node --check ./mcp/generated/any-cowart-mcp.mjs",
     "dev": "vite",
     "build:web": "node ./scripts/vite-build-once.mjs",
     "build:artifacts": "node ./scripts/build-release-artifacts.mjs",
@@ -15,9 +15,10 @@
     "probe:mcp:tools": "node ./scripts/probe-mcp.mjs --tools-only",
     "probe:mcp": "node ./scripts/probe-mcp.mjs",
     "probe:mcp:cold": "node ./scripts/probe-cold-install.mjs",
-    "probe:analytics": "node ./scripts/probe-analytics.mjs",
-    "probe:ga4": "node ./scripts/probe-ga4.mjs",
-    "quality": "npm run check:plugin && npm run check && npm run check:artifacts && npm run probe:mcp:cold && npm run probe:mcp && npm run probe:analytics && npm run probe:ga4"
+    "probe:codex-image": "node ./scripts/probe-codex-image-workflows.mjs",
+    "probe:storage-migration": "node ./scripts/probe-storage-migration.mjs",
+    "test:codex-image": "node --test ./vendor/codex-image/tests/*.test.mjs",
+    "quality": "npm run check:plugin && npm run check && npm run check:artifacts && npm run test:codex-image && npm run probe:codex-image && npm run probe:storage-migration && npm run probe:mcp:cold && npm run probe:mcp"
   },
   "devDependencies": {
     "@modelcontextprotocol/ext-apps": "^1.7.4",
