@@ -1,7 +1,7 @@
 ---
 name: any-cowart-image-edit
-version: 1.0.0
-description: v1.0.0｜Use any-cowart's bundled Codex-Image runtime to turn annotated image or HTML screenshots into clean bitmaps placed beside the source without changing the original or its annotations.
+version: 1.1.0
+description: v1.1.0｜Use any-cowart's bundled Codex-Image runtime to turn annotated image or HTML screenshots into clean bitmaps placed beside the source without changing the original or its annotations.
 ---
 
 # any-cowart Image Edit
@@ -17,6 +17,10 @@ any-cowart state is read and written through any-cowart MCP tools, not through a
 Use the Codex-Image runtime bundled inside the same plugin. Resolve `../../vendor/codex-image/scripts/generate-image.mjs` relative to this Skill directory and normalize it to an absolute path. Do not require a separately installed `codex-image` Skill. If the bundled script or Node.js is unavailable, report that concrete error and stop. Never fall back to native `imagegen`, another provider, or a hand-written image request.
 
 The user is responsible for providing the relevant screenshot(s). Do not auto-capture the current canvas and do not scan the whole canvas to infer edit requests; a canvas may contain many images with different annotations.
+
+## Configuration
+
+Run the command from the active user project directory. Pass `--config-skill any-cowart-image-edit` on every invocation so the bundled runtime reads only `$PWD/.env.any-cowart-image-edit`. Each field resolves from process environment, that Skill file, `$PWD/.env.local`, `$PWD/.env`, then the existing automatic `~/.config/codex-image/.env` and Codex host fallback. Empty values fall through; no parent directories or other Skills’ files are scanned. Recognized keys remain `CODEX_IMAGE_BASE_URL`, `CODEX_IMAGE_API_KEY`, `CODEX_IMAGE_MODEL`, and `CODEX_IMAGE_OUTPUT_DIR`.
 
 ## Workflow
 
@@ -57,6 +61,7 @@ The user is responsible for providing the relevant screenshot(s). Do not auto-ca
 
    ```bash
    node <absolute-bundled-codex-image-script> \
+     --config-skill any-cowart-image-edit \
      --prompt "<final edit prompt>" \
      --image <absolute-annotation-screenshot-path> \
      [--image <absolute-clean-source-path>]... \

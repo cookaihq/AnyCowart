@@ -1,7 +1,7 @@
 ---
 name: any-cowart-open-canvas
-version: 1.0.0
-description: v1.0.0｜Open, reopen, or explicitly refresh the native any-cowart canvas when the user asks to see it, or when a bare @any-cowart invocation has no other requested workflow.
+version: 1.1.0
+description: v1.1.0｜Open, reopen, or explicitly refresh the native any-cowart canvas when the user asks to see it, or when a bare @any-cowart invocation has no other requested workflow.
 ---
 
 # any-cowart Open Canvas

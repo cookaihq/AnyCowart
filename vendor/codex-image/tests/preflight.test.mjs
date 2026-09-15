@@ -50,6 +50,29 @@ async function expectCode(args, code, options = {}) {
 after(cleanupWorkspaces);
 
 describe("configuration layering", () => {
+  it("isolates calling Skills and applies the complete project precedence", async () => {
+    const workspace = await makeWorkspace();
+    await writeFileIn(workspace, ".env.local", `CODEX_IMAGE_MODEL=shared\nCODEX_IMAGE_BASE_URL=${BASE}\n`);
+    await writeFileIn(workspace, ".env.any-cowart-image-gen", "CODEX_IMAGE_MODEL=generate-model\nCODEX_IMAGE_BASE_URL=\n");
+    await writeFileIn(workspace, ".env.any-cowart-image-edit", "CODEX_IMAGE_MODEL=edit-model\n");
+    await writeFileIn(workspace, ".env.codex-image", "CODEX_IMAGE_MODEL=standalone-model\n");
+    const run = (skill, env = {CODEX_IMAGE_API_KEY: KEY}) =>
+      expectOk(["--prompt", "a cup", "--config-skill", skill], {workspace, env});
+    const generated = await run("any-cowart-image-gen");
+    assert.equal(generated.requested_model, "generate-model");
+    assert.equal(generated.model_source, "project_skill_env");
+    assert.equal(generated.base_url_source, "project_env_local");
+    assert.equal((await run("any-cowart-image-edit")).requested_model, "edit-model");
+    assert.equal((await run("any-cowart-image-gen", fullEnv())).requested_model, MODEL);
+    await writeFileIn(workspace, ".env.any-cowart-image-gen", "CODEX_IMAGE_MODEL=\n");
+    assert.equal((await run("any-cowart-image-gen")).requested_model, "shared");
+    await expectCode(["--prompt", "a cup", "--config-skill", "../other"], "invalid_arguments", {workspace});
+    const nested = join(workspace.cwd, "nested");
+    await mkdir(nested);
+    await expectCode(["--prompt", "a cup", "--config-skill", "any-cowart-image-edit"], "config_missing_model", {
+      workspace, cwd: nested, env: {CODEX_IMAGE_BASE_URL: BASE, CODEX_IMAGE_API_KEY: KEY},
+    });
+  });
   it("reads every field from the process environment", async () => {
     const payload = await expectOk(["--prompt", "a cup"], { env: fullEnv() });
     assert.equal(payload.base_url_source, "environment");

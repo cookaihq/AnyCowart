@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "any-cowart",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A native tldraw canvas for visual thinking and image workflows. Use any_cowart_mcp to open the canvas when requested and reuse an existing widget for subsequent any-cowart work.",
   "author": {
     "name": "cookaihq",

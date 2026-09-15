@@ -114,6 +114,7 @@ const BOOLEAN_FLAGS = new Set([
 ]);
 
 const VALUE_FLAGS = new Set([
+  "config-skill",
   "prompt",
   "image",
   "mode",
@@ -306,12 +307,17 @@ export function resolveCommand(argv) {
 
   const mode = resolveMode(flags);
   const prompt = requirePrompt(flags);
+  const configSkill = flags.get("config-skill") ?? "codex-image";
+  if (!["codex-image", "any-cowart-image-gen", "any-cowart-image-edit"].includes(configSkill)) {
+    throw new CliError("invalid_arguments", "--config-skill must name a supported image Skill.");
+  }
 
   return {
     command: flags.get("preflight") === true ? "preflight" : "execute",
     json,
     flags,
     request: {
+      configSkill,
       mode,
       prompt,
       images: flags.get("image") ?? [],
@@ -678,6 +684,7 @@ async function readCodexConfigLayer(env) {
 
 const SOURCE_NAMES = Object.freeze({
   environment: "environment",
+  projectSkillEnv: "project_skill_env",
   projectEnvLocal: "project_env_local",
   projectEnv: "project_env",
   homeEnv: "home_env",
@@ -689,12 +696,15 @@ const SOURCE_NAMES = Object.freeze({
 
 /**
  * Per-field first-found-wins resolution across every layer: process environment,
- * $PWD/.env.local, $PWD/.env, ~/.config/codex-image/.env, then the current Codex
+ * $PWD/.env.<configSkill>, $PWD/.env.local, $PWD/.env, ~/.config/codex-image/.env, then the current Codex
  * configuration. The Codex layer is only opened when an earlier layer left one of
  * base URL, API key or model unresolved, so a complete configuration is never
  * blocked by a malformed ~/.codex file.
  */
-export async function resolveConfiguration({ cwd, env }) {
+export async function resolveConfiguration({ cwd, env, configSkill = "codex-image" }) {
+  if (!["codex-image", "any-cowart-image-gen", "any-cowart-image-edit"].includes(configSkill)) {
+    throw new CliError("invalid_arguments", "Unsupported configuration Skill.");
+  }
   const layers = [];
 
   const fromEnvironment = new Map();
@@ -705,6 +715,10 @@ export async function resolveConfiguration({ cwd, env }) {
     }
   }
   layers.push({ source: SOURCE_NAMES.environment, values: fromEnvironment });
+  layers.push({
+    source: SOURCE_NAMES.projectSkillEnv,
+    values: await readEnvFileIfPresent(join(cwd, `.env.${configSkill}`)),
+  });
   layers.push({
     source: SOURCE_NAMES.projectEnvLocal,
     values: await readEnvFileIfPresent(join(cwd, ".env.local")),
@@ -1196,7 +1210,7 @@ async function decideRoute({ request, configuration, env }) {
  * dry-run reports is exactly what an execution would do.
  */
 async function buildPlan({ request, cwd, env }) {
-  const configuration = await resolveConfiguration({ cwd, env });
+  const configuration = await resolveConfiguration({ cwd, env, configSkill: request.configSkill });
 
   const routing = await decideRoute({ request, configuration, env });
   const images = await loadImageInputs(request.images, cwd);
@@ -2210,6 +2224,7 @@ Dry-run the same request offline (never reaches the network):
   generate-image.mjs --prompt <text> [same options] --preflight [--json]
 
 Options:
+  --config-skill <name>    Calling image Skill (defaults to codex-image).
   --prompt <text>          Final prompt. Required.
   --image <path-or-url>    Input image; repeat to pass several, order is preserved.
   --mode <mode>            generate (no images), reference or edit. Never inferred from the prompt.
@@ -2225,7 +2240,7 @@ Options:
   -h, --help               Show this help.
 
 Configuration is read per field from, in order: process environment,
-$PWD/.env.local, $PWD/.env, ~/.config/codex-image/.env, then the current
+$PWD/.env.<config-skill>, $PWD/.env.local, $PWD/.env, ~/.config/codex-image/.env, then the current
 Codex configuration (~/.codex/config.toml and auth.json, read-only).
 Recognised variables: CODEX_IMAGE_BASE_URL, CODEX_IMAGE_API_KEY, CODEX_IMAGE_MODEL,
 CODEX_IMAGE_OUTPUT_DIR. An API key is never accepted as a command-line argument.

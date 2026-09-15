@@ -36,6 +36,8 @@ ln -s "$PWD/codex-image" ~/.agents/skills/codex-image
 
 ## 配置
 
+本副本由 any-cowart 分发；`--config-skill any-cowart-image-gen` 或 `--config-skill any-cowart-image-edit` 明确选择调用 Skill 的专属文件。未传时为 `codex-image`，仅用于兼容独立脚本调用。
+
 ```bash
 export CODEX_IMAGE_BASE_URL="https://your-gateway.example/v1"
 export CODEX_IMAGE_API_KEY="sk-..."
@@ -43,9 +45,9 @@ export CODEX_IMAGE_MODEL="<顶层模型>"
 export CODEX_IMAGE_OUTPUT_DIR="./codex-image/output"   # 可选
 ```
 
-每个字段独立按这个顺序取第一个非空值，五层全部自动读取：进程环境变量 → `$PWD/.env.local` → `$PWD/.env` → `~/.config/codex-image/.env` → 当前 Codex 配置（读 `config.toml` 的 `base_url`/`model` 与 `auth.json` 的 `OPENAI_API_KEY`，只读）。
+每个字段独立按这个顺序取第一个非空值，六层全部自动读取：进程环境变量 → `$PWD/.env.<config-skill>` → `$PWD/.env.local` → `$PWD/.env` → `~/.config/codex-image/.env` → 当前 Codex 配置（读 `config.toml` 的 `base_url`/`model` 与 `auth.json` 的 `OPENAI_API_KEY`，只读）。
 
-前两个文件层只读脚本被调用时的工作目录，不向父目录递归。Codex 配置层只在前四层凑不齐 Base URL / Key / 模型时才打开。`--use-local-key` / `--use-codex-config` 已是兼容保留的 no-op。
+前三个文件层只读脚本被调用时的工作目录，不向父目录递归。Codex 配置层只在前五层凑不齐 Base URL / Key / 模型时才打开。`--use-local-key` / `--use-codex-config` 已是兼容保留的 no-op。
 
 ## 直接用脚本
 
