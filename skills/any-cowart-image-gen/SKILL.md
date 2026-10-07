@@ -1,6 +1,7 @@
 ---
 name: any-cowart-image-gen
-version: 1.1.0
+metadata:
+  version: "1.1.0"
 description: v1.1.0｜Generate a bitmap with any-cowart's bundled Codex-Image runtime and place it on the canvas, replacing a selected AI 图片 holder or inserting it into the current page.
 ---
 

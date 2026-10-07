@@ -1,6 +1,7 @@
 ---
 name: any-cowart-image-edit
-version: 1.1.0
+metadata:
+  version: "1.1.0"
 description: v1.1.0｜Use any-cowart's bundled Codex-Image runtime to turn annotated image or HTML screenshots into clean bitmaps placed beside the source without changing the original or its annotations.
 ---
 
