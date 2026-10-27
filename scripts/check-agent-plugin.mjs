@@ -80,7 +80,7 @@ for (const skillName of ["any-cowart-image-edit", "any-cowart-image-gen", "any-c
   assert.ok(frontmatter, `${skillName} must contain YAML frontmatter`);
   assert.equal(frontmatter.match(/^name:\s*(.+)$/mu)?.[1], skillName);
   const version = frontmatter.match(/^metadata:\s*\n  version: "([^"\r\n]+)"$/mu)?.[1];
-  assert.equal(version, manifest.version, `${skillName} version must match the plugin version`);
+  assert.match(version ?? '', /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/, `${skillName} must declare its own version`);
   const description = frontmatter.match(/^description:\s*(.+)$/mu)?.[1];
   assert.ok(description && [...description].length <= 1024);
   assert.ok(
