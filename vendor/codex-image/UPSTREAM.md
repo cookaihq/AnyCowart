@@ -4,8 +4,8 @@ This directory vendors the dependency-free Codex-Image runtime and offline tests
 used by any-Cowart's bitmap workflows.
 
 - Upstream: `https://github.com/cookaihq/codex-image`
-- Version: `3.2.0`
-- Commit: `0027c47191288f1ec85281c84b41906a256cb1ff`
+- Tag: `v3.4.0`
+- Commit: `190da37d635056eca04f80b64614b3e61331266f`
 - License: MIT; see `LICENSE`
 
 The standalone Agent Skill registration and automatic update checker are not
@@ -16,6 +16,6 @@ upstream convention:
 node vendor/codex-image/scripts/generate-image.mjs --prompt "..." --json
 ```
 
-Update this directory from a verified upstream release as one unit. Do not make
-private runtime changes that cause its CLI or JSON contract to diverge from the
-recorded upstream version.
+The Plugin adds `--config-skill` and its project configuration layers.
+
+Update this directory from a verified upstream release as one unit. Preserve the upstream CLI and JSON contracts when carrying forward the Plugin adaptation.

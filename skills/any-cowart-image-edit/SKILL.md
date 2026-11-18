@@ -1,8 +1,8 @@
 ---
 name: any-cowart-image-edit
 metadata:
-  version: "1.1.0"
-description: v1.1.0｜Use any-cowart's bundled Codex-Image runtime to turn annotated image or HTML screenshots into clean bitmaps placed beside the source without changing the original or its annotations.
+  version: "1.2.0"
+description: v1.2.0｜Use any-cowart's bundled Codex-Image runtime to turn annotated image or HTML screenshots into clean bitmaps placed beside the source without changing the original or its annotations.
 ---
 
 # any-cowart Image Edit
@@ -21,7 +21,7 @@ The user is responsible for providing the relevant screenshot(s). Do not auto-ca
 
 ## Configuration
 
-Run the command from the active user project directory. Pass `--config-skill any-cowart-image-edit` on every invocation so the bundled runtime reads only `$PWD/.env.any-cowart-image-edit`. Each field resolves from process environment, that Skill file, `$PWD/.env.local`, `$PWD/.env`, then the existing automatic `~/.config/codex-image/.env` and Codex host fallback. Empty values fall through; no parent directories or other Skills’ files are scanned. Recognized keys remain `CODEX_IMAGE_BASE_URL`, `CODEX_IMAGE_API_KEY`, `CODEX_IMAGE_MODEL`, and `CODEX_IMAGE_OUTPUT_DIR`.
+Run the command from the active user project directory. Pass `--config-skill any-cowart-image-edit` on every invocation so the bundled runtime reads only `$PWD/.env.any-cowart-image-edit`. Each field resolves from process environment, that Skill file, `$PWD/.env.local.any-cowart`, `$PWD/.env.any-cowart`, `$PWD/.env.local`, `$PWD/.env`, then the existing automatic `~/.config/codex-image/.env` and Codex host fallback. Empty values fall through; no parent directories or other Skills’ files are scanned. For executable selection and the separate HTTP recovery budgets, see [image connection settings](../../README.md#调整图片连接设置).
 
 ## Workflow
 

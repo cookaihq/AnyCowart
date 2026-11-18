@@ -22,7 +22,7 @@ import {
 } from "../vendor/codex-image/tests/helpers.mjs";
 
 const ROOT_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const PROJECT_DIR = await mkdtemp(path.join(tmpdir(), "any-cowart-codex-image-probe-"));
+const PROJECT_DIR = await mkdtemp(path.join(process.env.CODEX_IMAGE_TEST_TMP ?? tmpdir(), "any-cowart-codex-image-probe-"));
 const workspace = await makeWorkspace();
 const provider = await startMockProvider(({ response }) => {
   startSse(response, { "x-request-id": "req_any_cowart_probe" });
@@ -101,6 +101,8 @@ try {
     const result = await runCli(
       [
         ...scenario.args,
+        "--config-skill",
+        scenario.expectedMode === "edit" ? "any-cowart-image-edit" : "any-cowart-image-gen",
         "--label",
         `any-cowart-probe-${index + 1}`,
         "--output-dir",
@@ -202,7 +204,7 @@ try {
 
   const beforeFailure = JSON.stringify(savedState.snapshot);
   const failedRun = await runCli(
-    ["--prompt", "must fail before canvas insertion", "--mode", "generate", "--json"],
+    ["--prompt", "must fail before canvas insertion", "--config-skill", "any-cowart-image-gen", "--mode", "generate", "--json"],
     { workspace },
   );
   const failedPayload = soleJson(failedRun);
@@ -242,7 +244,8 @@ async function assertShippedContracts() {
   assert.doesNotMatch(appSource, /请使用内置 imagegen/u);
   assert.match(license, /MIT License/u);
   assert.match(license, /Copyright \(c\) 2026 cookaihq/u);
-  assert.match(upstream, /Version: `3\.2\.0`/u);
+  assert.match(upstream, /^- Tag: `v3\.4\.0`$/mu);
+  assert.match(upstream, /^- Commit: `[0-9a-f]{40}`$/mu);
 }
 
 function createCanvasFixture() {

@@ -50,7 +50,7 @@ codex plugin add any-cowart@any-cowart-github
 codex plugin list
 ```
 
-You do not need to locate the plugin cache manually. any-cowart's Git release tracks a self-contained MCP bundle, a prebuilt single-file widget, and the dependency-free Codex-Image v3.2.0 Node.js runtime under `vendor/codex-image/`. Codex can discover `render_any_cowart_canvas_widget`, and image workflows do not depend on a separately installed Codex-Image Skill. Runtime startup does not execute `npm install` or depend on `node_modules`, tldraw, or npm inside the plugin cache. Development dependencies are used only by maintainers to regenerate and verify release artifacts.
+You do not need to locate the plugin cache manually. any-cowart's Git release tracks a self-contained MCP bundle, a prebuilt single-file widget, and the dependency-free Codex-Image Node.js runtime under `vendor/codex-image/`. Codex can discover `render_any_cowart_canvas_widget`, and image workflows do not depend on a separately installed Codex-Image Skill. Runtime startup does not execute `npm install` or depend on `node_modules`, tldraw, or npm inside the plugin cache. Development dependencies are used only by maintainers to regenerate and verify release artifacts.
 
 If `any-cowart-github` is already registered, skip the first `marketplace add` command. After installation, completely quit and restart Codex once so the new skills, MCP tools, and release artifacts are fully loaded.
 
@@ -137,6 +137,8 @@ Codex passes the local annotation screenshot to Codex-Image in `edit` mode, read
 
 Codex-Image is installed with any-cowart. It prefers the HTTP route configured by `CODEX_IMAGE_BASE_URL`, `CODEX_IMAGE_API_KEY`, and `CODEX_IMAGE_MODEL`. When no usable key is available, it can delegate to a compatible local Codex CLI logged in with a ChatGPT account. Configuration may come from process environment variables, `.env.local` / `.env` in the active project, `~/.config/codex-image/.env`, or the current Codex configuration. This repository contains no API key.
 
+The two image Skills read `.env.local.any-cowart` and `.env.any-cowart` after their per-Skill file. Set `CODEX_IMAGE_CODEX_EXECUTABLE` to choose a specific launcher. `CODEX_IMAGE_REQUEST_MAX_RETRIES` and `CODEX_IMAGE_STREAM_MAX_RETRIES` default to 5 additional attempts each on the HTTP route. In Codex 0.169.0, the built-in OpenAI provider manages ChatGPT account delegation with four request retries and five stream reconnects by default. See the [image connection settings](README.md#调整图片连接设置) for backoff and background Responses options.
+
 `CODEX_IMAGE_MODEL` is the top-level model that requests the image tool, not the server-side image model. any-cowart does not select the server-side image model and reports it only when the provider returns one.
 
 If the bundled script is missing, Node.js is too old, configuration is absent, authentication fails, the network or provider fails, or the returned image is invalid, the Skill reports the explicit Codex-Image error code and message and stops before calling `insert_any_cowart_image`. The canvas remains unchanged, with no fallback to native Codex `imagegen` or another image service.
@@ -175,4 +177,4 @@ https://github.com/cookaihq/AnyCowart
 
 ## Acknowledgments
 
-any-cowart's canvas experience is built on [tldraw/tldraw](https://github.com/tldraw/tldraw). Bitmap generation uses the bundled [Codex-Image](vendor/codex-image/UPSTREAM.md) v3.2.0 runtime; its MIT license is retained at [vendor/codex-image/LICENSE](vendor/codex-image/LICENSE).
+any-cowart's canvas experience is built on [tldraw/tldraw](https://github.com/tldraw/tldraw). Bitmap generation uses the bundled [Codex-Image](vendor/codex-image/UPSTREAM.md) v3.4.0 runtime; its MIT license is retained at [vendor/codex-image/LICENSE](vendor/codex-image/LICENSE).

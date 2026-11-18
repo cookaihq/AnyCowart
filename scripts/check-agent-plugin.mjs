@@ -75,7 +75,7 @@ for (const skillName of ["any-cowart-image-edit", "any-cowart-image-gen", "any-c
   const skillPath = path.join(rootDir, "skills", skillName, "SKILL.md");
   assert.ok((await lstat(skillPath)).isFile(), `${skillPath} must be a regular file`);
   assert.ok((await realpath(skillPath)).startsWith(`${resolvedRoot}${path.sep}`));
-  const contents = await readFile(skillPath, "utf8");
+  const contents = (await readFile(skillPath, "utf8")).replaceAll("\r\n", "\n");
   const frontmatter = contents.match(/^---\n([\s\S]*?)\n---/u)?.[1];
   assert.ok(frontmatter, `${skillName} must contain YAML frontmatter`);
   assert.equal(frontmatter.match(/^name:\s*(.+)$/mu)?.[1], skillName);

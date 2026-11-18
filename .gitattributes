@@ -5,3 +5,11 @@
 # Release artifacts are generated from source and intentionally tracked so the
 # installed plugin can start without npm or node_modules.
 mcp/generated/** linguist-generated=true -whitespace
+/mcp/generated/*.mjs text eol=lf
+/mcp/generated/*.html text eol=lf
+/mcp/generated/release-manifest.json text eol=lf
+/index.html text eol=lf
+/src/assets/ai-html.svg text eol=lf
+/src/assets/ai-image.svg text eol=lf
+/src/assets/ai-slides.svg text eol=lf
+/src/assets/tool-comment.svg text eol=lf

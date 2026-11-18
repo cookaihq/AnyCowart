@@ -1,8 +1,8 @@
 ---
 name: any-cowart-image-gen
 metadata:
-  version: "1.1.0"
-description: v1.1.0｜Generate a bitmap with any-cowart's bundled Codex-Image runtime and place it on the canvas, replacing a selected AI 图片 holder or inserting it into the current page.
+  version: "1.2.0"
+description: v1.2.0｜Generate a bitmap with any-cowart's bundled Codex-Image runtime and place it on the canvas, replacing a selected AI 图片 holder or inserting it into the current page.
 ---
 
 # any-cowart Image Gen
@@ -39,7 +39,7 @@ meta flag. Support both shapes.
 
 ## Configuration
 
-Run the command from the active user project directory. Pass `--config-skill any-cowart-image-gen` on every invocation so the bundled runtime reads only `$PWD/.env.any-cowart-image-gen`. Each field resolves from process environment, that Skill file, `$PWD/.env.local`, `$PWD/.env`, then the existing automatic `~/.config/codex-image/.env` and Codex host fallback. Empty values fall through; no parent directories or other Skills’ files are scanned. Recognized keys remain `CODEX_IMAGE_BASE_URL`, `CODEX_IMAGE_API_KEY`, `CODEX_IMAGE_MODEL`, and `CODEX_IMAGE_OUTPUT_DIR`.
+Run the command from the active user project directory. Pass `--config-skill any-cowart-image-gen` on every invocation so the bundled runtime reads only `$PWD/.env.any-cowart-image-gen`. Each field resolves from process environment, that Skill file, `$PWD/.env.local.any-cowart`, `$PWD/.env.any-cowart`, `$PWD/.env.local`, `$PWD/.env`, then the existing automatic `~/.config/codex-image/.env` and Codex host fallback. Empty values fall through; no parent directories or other Skills’ files are scanned. For executable selection and the separate HTTP recovery budgets, see [image connection settings](../../README.md#调整图片连接设置).
 
 ## Workflow
 

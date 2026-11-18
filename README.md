@@ -50,7 +50,7 @@ codex plugin add any-cowart@any-cowart-github
 codex plugin list
 ```
 
-不需要手动查找插件缓存目录。any-cowart 的 Git 版本已经跟踪自包含 MCP bundle、预构建的单文件 Widget，以及 `vendor/codex-image/` 下的 Codex-Image v3.2.0 零依赖 Node.js 运行时；Codex 可以直接发现 `render_any_cowart_canvas_widget`，图片流程也不依赖用户预先安装同名 Skill。运行时不会执行 `npm install`，也不依赖插件缓存中的 `node_modules`、tldraw 或 npm。开发依赖只用于 any-cowart 维护者在发布前重新生成和验证产物。
+不需要手动查找插件缓存目录。any-cowart 的 Git 版本已经跟踪自包含 MCP bundle、预构建的单文件 Widget，以及 `vendor/codex-image/` 下的 Codex-Image 零依赖 Node.js 运行时；Codex 可以直接发现 `render_any_cowart_canvas_widget`，图片流程也不依赖用户预先安装同名 Skill。运行时不会执行 `npm install`，也不依赖插件缓存中的 `node_modules`、tldraw 或 npm。开发依赖只用于 any-cowart 维护者在发布前重新生成和验证产物。
 
 如果 `any-cowart-github` 已经注册，可以跳过第一条 `marketplace add` 命令。安装后请完全退出并重新启动一次 Codex，让新的 skill、MCP 工具和发布产物完整加载。
 
@@ -139,6 +139,21 @@ Codex-Image 随 any-cowart 一起安装，不需要单独安装。它优先使�
 
 `CODEX_IMAGE_MODEL` 是负责发起图片工具调用的顶层模型，不是服务端实际图片模型。any-cowart 不指定服务端实际图片模型，实际值只在服务端返回时报告。
 
+### 调整图片连接设置
+
+可以向 Agent 说：“请把 any-cowart 图片请求重试设为 2 次、响应流恢复设为 4 次，在当前项目共用并读回生效来源。”两个图片 Skill 先读取进程环境和各自的 `.env.any-cowart-image-gen` / `.env.any-cowart-image-edit`，然后读取共享的 `.env.local.any-cowart`、`.env.any-cowart`，再使用原有项目文件及个人配置。
+
+| 配置项 | 默认值 | 用途 |
+|---|---|---|
+| `CODEX_IMAGE_CODEX_EXECUTABLE` | 自动选择 | 依次采用显式路径、经过核验的当前 Codex 会话路径或 PATH 中的 `codex`。Windows 支持原生可执行文件和官方 npm 启动器。 |
+| `CODEX_IMAGE_REQUEST_MAX_RETRIES` | 5 | 第一次 HTTP 提交以外的安全重试次数，0–100。 |
+| `CODEX_IMAGE_STREAM_MAX_RETRIES` | 5 | HTTP 响应首次断流以后的恢复次数，0–100。 |
+| `CODEX_IMAGE_RETRY_BACKOFF_BASE_MS` | 1000 | 指数退避的起始等待，单位毫秒。 |
+| `CODEX_IMAGE_RETRY_BACKOFF_MAX_MS` | 16000 | 指数退避上限，单位毫秒。完整的服务冷却时间可以更长。 |
+| `CODEX_IMAGE_RESPONSES_BACKGROUND` | `false` | 服务支持 Responses 后台模式且允许留存响应时设为 `true`，启用 `background: true` 与 `store: true`。 |
+
+上述次数与退避用于 HTTP，断流后读取已有响应。ChatGPT 账号委托由所选 Codex provider 管理连接恢复。Codex 0.169.0 的内置 OpenAI provider 默认采用 4 次请求重试、5 次流重连。
+
 缺少随附脚本、Node.js 版本过低、配置缺失、鉴权失败、网络错误、服务端拒绝或图片校验失败时，Skill 会返回 Codex-Image 的明确错误码和消息，并在调用 `insert_any_cowart_image` 前停止。画布保持不变，不会退回 Codex 原生 `imagegen` 或其他图片服务。
 
 ## 本地开发
@@ -175,4 +190,14 @@ https://github.com/cookaihq/AnyCowart
 
 ## 致谢
 
-any-cowart 的画布能力基于 [tldraw/tldraw](https://github.com/tldraw/tldraw) 实现。位图生成运行时使用随仓分发的 [Codex-Image](vendor/codex-image/UPSTREAM.md) v3.2.0；其 MIT 许可证保留在 [vendor/codex-image/LICENSE](vendor/codex-image/LICENSE)。
+any-cowart 的画布能力基于 [tldraw/tldraw](https://github.com/tldraw/tldraw) 实现。位图生成运行时使用随仓分发的 [Codex-Image](vendor/codex-image/UPSTREAM.md) v3.4.0；其 MIT 许可证保留在 [vendor/codex-image/LICENSE](vendor/codex-image/LICENSE)。
+
+## 版本与 Release
+
+表格对应源码中的候选或已发布版本。Release 链接在发布后可用。
+
+<!-- release-table:begin -->
+| 目标 | 版本 | Release |
+|---|---|---|
+| AnyCowart | 1.2.0 | [v1.2.0](https://github.com/cookaihq/AnyCowart/releases/tag/v1.2.0) |
+<!-- release-table:end -->

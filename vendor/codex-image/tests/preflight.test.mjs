@@ -50,6 +50,18 @@ async function expectCode(args, code, options = {}) {
 after(cleanupWorkspaces);
 
 describe("configuration layering", () => {
+  it("resolves independent recovery settings from the shared Plugin files and Skill overrides", async () => {
+    const workspace = await makeWorkspace();
+    await writeFileIn(workspace, ".env.any-cowart", "CODEX_IMAGE_REQUEST_MAX_RETRIES=2\nCODEX_IMAGE_STREAM_MAX_RETRIES=1\n");
+    await writeFileIn(workspace, ".env.local.any-cowart", "CODEX_IMAGE_REQUEST_MAX_RETRIES=3\n");
+    await writeFileIn(workspace, ".env.any-cowart-image-edit", "CODEX_IMAGE_STREAM_MAX_RETRIES=0\n");
+    for (const [skill, streamRetries] of [["any-cowart-image-gen", 1], ["any-cowart-image-edit", 0]]) {
+      const summary = await expectOk(["--prompt", "paper cup", "--config-skill", skill], { workspace, env: fullEnv() });
+      assert.equal(summary.recovery.requestRetries, 3);
+      assert.equal(summary.recovery.streamRetries, streamRetries);
+      assert.equal(summary.recovery.sources.requestRetries, "project_plugin_env_local");
+    }
+  });
   it("isolates calling Skills and applies the complete project precedence", async () => {
     const workspace = await makeWorkspace();
     await writeFileIn(workspace, ".env.local", `CODEX_IMAGE_MODEL=shared\nCODEX_IMAGE_BASE_URL=${BASE}\n`);
@@ -362,7 +374,9 @@ describe("routing", () => {
     await installStubCodex(workspace, { login: "account" });
     const payload = await expectOk(["--prompt", "a cup"], { workspace, env: fullEnv() });
     assert.equal(payload.route, "http");
-    assert.equal(payload.max_attempts, 4);
+    assert.equal(payload.max_attempts, 6);
+    assert.equal(payload.recovery.requestRetries, 5);
+    assert.equal(payload.recovery.streamRetries, 5);
   });
 
   it("reports the delegate state when no codex is installed and nothing is configured", async () => {
